@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+
+    <LangVersion>preview</LangVersion>
+    <Nullable>enable</Nullable>
+    <Features>strict</Features>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PropertyChangedAnalyzers" Version="2.7.2" PrivateAssets="all" />
+    <PackageReference Include="WpfAnalyzers" Version="2.2.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>
