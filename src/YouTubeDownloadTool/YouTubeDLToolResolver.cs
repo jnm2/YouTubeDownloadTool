@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -117,13 +116,24 @@ namespace YouTubeDownloadTool
             };
             client.DefaultRequestHeaders.Add("User-Agent", "YouTube download tool");
 
-            var (version, downloadUrl) = await GetLatestGitHubReleaseAsync(client, cancellationToken);
+            const string assetToDownload = "youtube-dl.exe";
+
+            var (version, downloadUrl) = await Utils.GetLatestGitHubReleaseAssetAsync(
+                client,
+                owner: "ytdl-org",
+                repo: "youtube-dl",
+                assetToDownload,
+                cancellationToken);
+
+            if (downloadUrl is null)
+                throw new NotImplementedException($"Unable to find {assetToDownload} in latest GitHub release.");
+
             AvailableVersion = version;
 
             if (currentSource is { } && string.Equals(version, currentSource.Tool.Version, StringComparison.OrdinalIgnoreCase))
                 return currentSource;
 
-            var fileLock = await GetOrDownloadFileAsync(
+            var fileLock = await Utils.GetOrDownloadFileAsync(
                 Path.Join(cacheDirectory, "v" + version, ExecutableFileName),
                 client,
                 downloadUrl,
@@ -132,85 +142,6 @@ namespace YouTubeDownloadTool
             var newSource = new LeaseSource(version, fileLock);
             ReplaceCurrentSource(newSource);
             return newSource;
-        }
-
-        private async Task<(string version, string downloadUrl)> GetLatestGitHubReleaseAsync(HttpClient client, CancellationToken cancellationToken)
-        {
-            using var response = await client.GetAsync(
-               "/repos/ytdl-org/youtube-dl/releases/latest",
-               HttpCompletionOption.ResponseHeadersRead,
-               cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-
-            await using (stream.ConfigureAwait(false))
-            {
-                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                var version = document.RootElement.GetProperty("tag_name").GetString();
-
-                foreach (var asset in document.RootElement.GetProperty("assets").EnumerateArray())
-                {
-                    if ("youtube-dl.exe".Equals(asset.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase))
-                    {
-                        var downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                        return (version, downloadUrl);
-                    }
-                }
-
-                throw new NotImplementedException("Unable to find youtube-dl.exe in latest GitHub release.");
-            }
-        }
-
-        private async Task<RefCountedFileLock> GetOrDownloadFileAsync(string filePath, HttpClient client, string downloadUrl, CancellationToken cancellationToken)
-        {
-            if (filePath is null || !Path.IsPathFullyQualified(filePath))
-                throw new ArgumentException("The file path must be fully qualified.", nameof(filePath));
-
-            if (client is null) throw new ArgumentNullException(nameof(client));
-
-            if (string.IsNullOrWhiteSpace(downloadUrl))
-                throw new ArgumentException("A download URL must be specified.", nameof(downloadUrl));
-
-            var fileLock = RefCountedFileLock.CreateIfExists(filePath);
-
-            if (fileLock is null)
-            {
-                using var tempFile = await DownloadToTempFileAsync(client, downloadUrl, cancellationToken).ConfigureAwait(false);
-
-                do
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
-                    try
-                    {
-                        File.Move(tempFile.Path, filePath);
-                    }
-                    catch (IOException ex) when (ex.GetErrorCode() == WinErrorCode.AlreadyExists)
-                    {
-                    }
-
-                    fileLock = RefCountedFileLock.CreateIfExists(filePath);
-                } while (fileLock is null);
-            }
-
-            return fileLock;
-        }
-
-        private async Task<TempFile> DownloadToTempFileAsync(HttpClient client, string downloadUrl, CancellationToken cancellationToken)
-        {
-            using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            await using var _ = stream.ConfigureAwait(false);
-
-            using var tempFile = OwnershipTracker.Create(new TempFile());
-
-            using var file = tempFile.OwnedInstance.OpenStream();
-            await stream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
-
-            return tempFile.ReleaseOwnership();
         }
     }
 }
