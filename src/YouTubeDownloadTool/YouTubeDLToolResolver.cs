@@ -11,44 +11,45 @@ using System.Threading.Tasks;
 
 namespace YouTubeDownloadTool
 {
-    public sealed class YouTubeDLToolResolver : IDisposable
+    public sealed partial class YouTubeDLToolResolver : IDisposable
     {
         private const string ExecutableFileName = "youtube-dl.exe";
 
         private readonly string cacheDirectory;
-        private FileStream? currentFileLock;
+        private LeaseSource? currentSource;
 
         public YouTubeDLToolResolver(string cacheDirectory)
         {
             this.cacheDirectory = cacheDirectory;
-
-            if (TryGetVersionDirectories()
-                .OrderByDescending(d => d.version)
-                .FirstOrDefault() is (_, var rawVersion, { } directory))
-            {
-                currentFileLock = GetLockIfExists(Path.Join(directory, ExecutableFileName));
-                if (currentFileLock is { }) CurrentVersion = rawVersion;
-            }
+            currentSource = GetCurrentCachedTool();
         }
 
         public void Dispose()
         {
-            currentFileLock?.Dispose();
+            ReplaceCurrentSource(null);
         }
 
-        public string? CurrentVersion { get; private set; }
+        private void ReplaceCurrentSource(LeaseSource? newSource)
+        {
+            var originalLease = currentSource?.Lease;
+            currentSource = newSource;
+            originalLease?.Dispose();
+        }
+
         public string? AvailableVersion { get; private set; }
 
-        private FileStream? GetLockIfExists(string executablePath)
+        private LeaseSource? GetCurrentCachedTool()
         {
-            try
+            foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.version))
             {
-                return new FileStream(executablePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                if (info is (_, var rawVersion, { } directory)
+                    && RefCountedFileLock.CreateIfExists(Path.Join(directory, ExecutableFileName)) is { } fileLock)
+                {
+                    return new LeaseSource(rawVersion, fileLock);
+                }
             }
-            catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
-            {
-                return null;
-            }
+
+            return null;
         }
 
         public void PurgeOldVersions()
@@ -70,12 +71,9 @@ namespace YouTubeDownloadTool
             }
         }
 
-        public async Task<YouTubeDLTool> GetToolAsync(CancellationToken cancellationToken)
+        public async Task<YouTubeDLToolLease> LeaseToolAsync(CancellationToken cancellationToken)
         {
-            var fileLock = currentFileLock
-                ?? await ResolveLatestToolAsync(cancellationToken);
-
-            return new YouTubeDLTool(fileLock.Name);
+            return (currentSource ?? await ResolveLatestToolAsync(cancellationToken)).CreateLease();
         }
 
         public async Task CheckForUpdatesAsync(CancellationToken cancellationToken)
@@ -104,7 +102,7 @@ namespace YouTubeDownloadTool
             });
         }
 
-        private async Task<FileStream> ResolveLatestToolAsync(CancellationToken cancellationToken)
+        private async Task<LeaseSource> ResolveLatestToolAsync(CancellationToken cancellationToken)
         {
             using var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
             {
@@ -119,36 +117,18 @@ namespace YouTubeDownloadTool
             var (version, downloadUrl) = await GetLatestGitHubReleaseAsync(client, cancellationToken);
             AvailableVersion = version;
 
-            if (string.Equals(version, CurrentVersion, StringComparison.OrdinalIgnoreCase))
-                return currentFileLock!; // CurrentVersion is always null if currentFileLock is. TODO: Join CurrentVersion and currentFileLock
+            if (currentSource is { } && string.Equals(version, currentSource.Tool.Version, StringComparison.OrdinalIgnoreCase))
+                return currentSource;
 
-            var executablePath = Path.Join(cacheDirectory, "v" + version, ExecutableFileName);
+            var fileLock = await GetOrDownloadFileAsync(
+                Path.Join(cacheDirectory, "v" + version, ExecutableFileName),
+                client,
+                downloadUrl,
+                cancellationToken);
 
-            var newFileLock = GetLockIfExists(executablePath);
-            if (newFileLock is null)
-            {
-                using var tempFile = await DownloadToTempFileAsync(client, downloadUrl, cancellationToken);
-
-                do
-                {
-                    try
-                    {
-                        File.Move(tempFile.Path, executablePath);
-                    }
-                    catch (IOException)
-                    {
-                    }
-
-                    newFileLock = GetLockIfExists(executablePath);
-                } while (newFileLock is null);
-            }
-
-            var oldFileLock = currentFileLock;
-            currentFileLock = newFileLock;
-            CurrentVersion = version;
-            oldFileLock?.Dispose();
-
-            return newFileLock;
+            var newSource = new LeaseSource(version, fileLock);
+            ReplaceCurrentSource(newSource);
+            return newSource;
         }
 
         private async Task<(string version, string downloadUrl)> GetLatestGitHubReleaseAsync(HttpClient client, CancellationToken cancellationToken)
@@ -178,6 +158,40 @@ namespace YouTubeDownloadTool
 
                 throw new NotImplementedException("Unable to find youtube-dl.exe in latest GitHub release.");
             }
+        }
+
+        private async Task<RefCountedFileLock> GetOrDownloadFileAsync(string filePath, HttpClient client, string downloadUrl, CancellationToken cancellationToken)
+        {
+            if (filePath is null || !Path.IsPathFullyQualified(filePath))
+                throw new ArgumentException("The file path must be fully qualified.", nameof(filePath));
+
+            if (client is null) throw new ArgumentNullException(nameof(client));
+
+            if (string.IsNullOrWhiteSpace(downloadUrl))
+                throw new ArgumentException("A download URL must be specified.", nameof(downloadUrl));
+
+            var fileLock = RefCountedFileLock.CreateIfExists(filePath);
+
+            if (fileLock is null)
+            {
+                using var tempFile = await DownloadToTempFileAsync(client, downloadUrl, cancellationToken).ConfigureAwait(false);
+
+                do
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                    try
+                    {
+                        File.Move(tempFile.Path, filePath);
+                    }
+                    catch (IOException ex) when (ex.GetErrorCode() == WinErrorCode.AlreadyExists)
+                    {
+                    }
+
+                    fileLock = RefCountedFileLock.CreateIfExists(filePath);
+                } while (fileLock is null);
+            }
+
+            return fileLock;
         }
 
         private async Task<TempFile> DownloadToTempFileAsync(HttpClient client, string downloadUrl, CancellationToken cancellationToken)

@@ -15,5 +15,10 @@ namespace YouTubeDownloadTool
                 }
             }
         }
+
+        public static WinErrorCode GetErrorCode(this Exception exception)
+        {
+            return (WinErrorCode)exception.HResult;
+        }
     }
 }
