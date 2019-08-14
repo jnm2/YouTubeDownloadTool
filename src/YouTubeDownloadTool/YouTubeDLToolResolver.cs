@@ -16,12 +16,15 @@ namespace YouTubeDownloadTool
         private const string ExecutableFileName = "youtube-dl.exe";
 
         private readonly string cacheDirectory;
+        private readonly TaskDeduplicator<LeaseSource> resolveDeduplicator;
         private LeaseSource? currentSource;
 
         public YouTubeDLToolResolver(string cacheDirectory)
         {
             this.cacheDirectory = cacheDirectory;
             currentSource = GetCurrentCachedTool();
+
+            resolveDeduplicator = new TaskDeduplicator<LeaseSource>(ResolveLatestToolAsync);
         }
 
         public void Dispose()
@@ -73,12 +76,12 @@ namespace YouTubeDownloadTool
 
         public async Task<YouTubeDLToolLease> LeaseToolAsync(CancellationToken cancellationToken)
         {
-            return (currentSource ?? await ResolveLatestToolAsync(cancellationToken)).CreateLease();
+            return (currentSource ?? await resolveDeduplicator.StartOrJoin(cancellationToken)).CreateLease();
         }
 
         public async Task CheckForUpdatesAsync(CancellationToken cancellationToken)
         {
-            await ResolveLatestToolAsync(cancellationToken);
+            await resolveDeduplicator.StartOrJoin(cancellationToken);
         }
 
         private IEnumerable<(Version version, string rawVersion, string directory)> TryGetVersionDirectories()
