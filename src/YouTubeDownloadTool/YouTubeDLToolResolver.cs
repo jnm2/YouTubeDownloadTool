@@ -38,8 +38,6 @@ namespace YouTubeDownloadTool
             originalLease?.Dispose();
         }
 
-        public string? AvailableVersion { get; private set; }
-
         private LeaseSource? GetCurrentCachedTool()
         {
             foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.version))
@@ -127,8 +125,6 @@ namespace YouTubeDownloadTool
 
             if (downloadUrl is null)
                 throw new NotImplementedException($"Unable to find {assetToDownload} in latest GitHub release.");
-
-            AvailableVersion = version;
 
             if (currentSource is { } && string.Equals(version, currentSource.Tool.Version, StringComparison.OrdinalIgnoreCase))
                 return currentSource;
