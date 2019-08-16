@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AmbientTasks" Version="0.1.0-ci.58" />
     <PackageReference Include="PropertyChangedAnalyzers" Version="2.7.2" PrivateAssets="all" />
     <PackageReference Include="WpfAnalyzers" Version="2.2.0.3" PrivateAssets="all" />
   </ItemGroup>
