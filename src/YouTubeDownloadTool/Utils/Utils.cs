@@ -8,21 +8,24 @@ namespace YouTubeDownloadTool
 {
     internal static class Utils
     {
-        public static async Task<RefCountedFileLock> GetOrDownloadFileAsync(string filePath, HttpClient client, string downloadUrl, CancellationToken cancellationToken)
+        public static async Task<RefCountedFileLock> GetOrDownloadFileAsync(string filePath, Func<CancellationToken, Task<Stream>> downloadAsync, CancellationToken cancellationToken)
         {
             if (filePath is null || !Path.IsPathFullyQualified(filePath))
                 throw new ArgumentException("The file path must be fully qualified.", nameof(filePath));
 
-            if (client is null) throw new ArgumentNullException(nameof(client));
-
-            if (string.IsNullOrWhiteSpace(downloadUrl))
-                throw new ArgumentException("A download URL must be specified.", nameof(downloadUrl));
+            if (downloadAsync is null) throw new ArgumentNullException(nameof(downloadAsync));
 
             var fileLock = RefCountedFileLock.CreateIfExists(filePath);
 
             if (fileLock is null)
             {
-                using var tempFile = await DownloadToTempFileAsync(client, downloadUrl, cancellationToken).ConfigureAwait(false);
+                var stream = await downloadAsync.Invoke(cancellationToken).ConfigureAwait(false);
+                await using var _ = stream.ConfigureAwait(false);
+
+                using var tempFile = new TempFile();
+
+                using (var file = tempFile.OpenStream())
+                    await stream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
 
                 do
                 {
@@ -40,22 +43,6 @@ namespace YouTubeDownloadTool
             }
 
             return fileLock;
-        }
-
-        public static async Task<TempFile> DownloadToTempFileAsync(HttpClient client, string downloadUrl, CancellationToken cancellationToken)
-        {
-            using var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-            await using var _ = stream.ConfigureAwait(false);
-
-            using var tempFile = OwnershipTracker.Create(new TempFile());
-
-            using var file = tempFile.OwnedInstance.OpenStream();
-            await stream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
-
-            return tempFile.ReleaseOwnership();
         }
     }
 }

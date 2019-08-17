@@ -106,16 +106,14 @@ namespace YouTubeDownloadTool
 
         private async Task<LeaseSource> ResolveLatestToolAsync(CancellationToken cancellationToken)
         {
-            var download = await getLatestDownloadAsync.Invoke(cancellationToken).ConfigureAwait(false);
-            using var client = download.HttpClient;
+            using var download = await getLatestDownloadAsync.Invoke(cancellationToken).ConfigureAwait(false);
 
             if (currentSource is { } && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
                 return currentSource;
 
             var fileLock = await Utils.GetOrDownloadFileAsync(
                 Path.Join(cacheDirectory, "v" + download.Version, fileName),
-                client,
-                download.DownloadUrl,
+                download.DownloadAsync,
                 cancellationToken);
 
             var newSource = new LeaseSource(download.Version, fileLock);

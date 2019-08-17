@@ -42,7 +42,8 @@ namespace YouTubeDownloadTool
                 fileName: "ffmpeg.exe",
                 DownloadResolvers.DownloadPage(
                     pageUrl: "https://ffmpeg.zeranoe.com/builds/win64/static/",
-                    linkFileNamePattern: "ffmpeg-*-win64-static.zip"));
+                    linkFileNamePattern: "ffmpeg-*-win64-static.zip",
+                    version => StreamTransforms.UnzipSingleFile($"ffmpeg-{version}-win64-static/bin/ffmpeg.exe")));
 
             ffmpegResolver.PurgeOldVersions();
 

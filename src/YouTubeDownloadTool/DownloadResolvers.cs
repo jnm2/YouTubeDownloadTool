@@ -1,6 +1,7 @@
 ﻿using LtGt;
 using LtGt.Models;
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -14,7 +15,10 @@ namespace YouTubeDownloadTool
 {
     public static class DownloadResolvers
     {
-        public static Func<CancellationToken, Task<AvailableToolDownload>> DownloadPage(string pageUrl, string linkFileNamePattern)
+        public static Func<CancellationToken, Task<AvailableToolDownload>> DownloadPage(
+            string pageUrl,
+            string linkFileNamePattern,
+            Func<string, Func<Stream, Stream>?>? getStreamTransformForVersion = null)
         {
             if (string.IsNullOrWhiteSpace(pageUrl))
                 throw new ArgumentException("Page URL must be specified.", nameof(pageUrl));
@@ -67,8 +71,9 @@ namespace YouTubeDownloadTool
                     if (max is (_, var rawVersion, var href))
                     {
                         var downloadUrl = new Uri(baseUri: new Uri(pageUrl), relativeUri: href).AbsoluteUri;
+                        var streamTransform = getStreamTransformForVersion?.Invoke(rawVersion);
 
-                        return new AvailableToolDownload(client.ReleaseOwnership(), downloadUrl, rawVersion);
+                        return new AvailableToolDownload(rawVersion, client.ReleaseOwnership(), downloadUrl, streamTransform);
                     }
                 }
 
@@ -76,7 +81,12 @@ namespace YouTubeDownloadTool
             };
         }
 
-        public static Func<CancellationToken, Task<AvailableToolDownload>> GitHubReleaseAsset(string owner, string repo, string assetName, string userAgent)
+        public static Func<CancellationToken, Task<AvailableToolDownload>> GitHubReleaseAsset(
+            string owner,
+            string repo,
+            string assetName,
+            string userAgent,
+            Func<string, Func<Stream, Stream>?>? getStreamTransformForVersion = null)
         {
             if (string.IsNullOrWhiteSpace(owner))
                 throw new ArgumentException("Owner must be specified.", nameof(owner));
@@ -104,7 +114,9 @@ namespace YouTubeDownloadTool
                 if (downloadUrl is null)
                     throw new NotImplementedException($"Unable to find {assetName} in latest GitHub release.");
 
-                return new AvailableToolDownload(client.ReleaseOwnership(), downloadUrl, version);
+                var streamTransform = getStreamTransformForVersion?.Invoke(version);
+
+                return new AvailableToolDownload(version, client.ReleaseOwnership(), downloadUrl, streamTransform);
             };
         }
 

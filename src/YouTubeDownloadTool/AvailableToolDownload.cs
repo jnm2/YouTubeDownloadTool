@@ -1,25 +1,43 @@
 ﻿using System;
+using System.IO;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace YouTubeDownloadTool
 {
-    public readonly struct AvailableToolDownload
+    public sealed class AvailableToolDownload : IDisposable
     {
-        public AvailableToolDownload(HttpClient httpClient, string downloadUrl, string version)
+        private readonly HttpClient httpClient;
+        private readonly string downloadUrl;
+        private readonly Func<Stream, Stream>? streamTransform;
+
+        public string Version { get; }
+
+        public AvailableToolDownload(string version, HttpClient httpClient, string downloadUrl, Func<Stream, Stream>? streamTransform = null)
         {
-            if (string.IsNullOrEmpty(downloadUrl))
-                throw new ArgumentException("Download URL must be specified.", nameof(downloadUrl));
-
-            if (string.IsNullOrEmpty(version))
-                throw new ArgumentException("Version must be specified.", nameof(version));
-
-            HttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            DownloadUrl = downloadUrl;
             Version = version;
+            this.httpClient = httpClient;
+            this.downloadUrl = downloadUrl;
+            this.streamTransform = streamTransform;
         }
 
-        public HttpClient HttpClient { get; }
-        public string DownloadUrl { get; }
-        public string Version { get; }
+        public void Dispose()
+        {
+            httpClient.Dispose();
+        }
+
+        public async Task<Stream> DownloadAsync(CancellationToken cancellationToken)
+        {
+            var response = await httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+
+            response.EnsureSuccessStatusCode();
+
+            var stream = await response.Content.ReadAsStreamAsync();
+
+            return streamTransform is { }
+                ? streamTransform.Invoke(stream)
+                : stream;
+        }
     }
 }
