@@ -18,15 +18,24 @@ namespace YouTubeDownloadTool
 
         private async Task TestAsync()
         {
-            var appDataDir = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "YouTube download tool");
-            var toolCacheDir = Path.Join(appDataDir, "youtube-dl");
+            const string productName = "YouTube download tool";
 
-            using var resolver = new ToolResolver(toolCacheDir, "youtube-dl.exe");
-            resolver.PurgeOldVersions();
+            var appDataDir = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), productName);
 
-            AmbientTasks.Add(resolver.CheckForUpdatesAsync(CancellationToken.None));
+            using var youTubeDLResolver = new ToolResolver(
+                cacheDirectory: Path.Join(appDataDir, "youtube-dl"),
+                fileName: "youtube-dl.exe",
+                DownloadResolvers.GitHubReleaseAsset(
+                    owner: "ytdl-org",
+                    repo: "youtube-dl",
+                    assetName: "youtube-dl.exe",
+                    userAgent: productName));
 
-            using var lease = await resolver.LeaseToolAsync(CancellationToken.None);
+            youTubeDLResolver.PurgeOldVersions();
+
+            AmbientTasks.Add(youTubeDLResolver.CheckForUpdatesAsync(CancellationToken.None));
+
+            using var lease = await youTubeDLResolver.LeaseToolAsync(CancellationToken.None);
 
             var tool = new YouTubeDLTool(lease.FilePath);
 

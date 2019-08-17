@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,38 +8,6 @@ namespace YouTubeDownloadTool
 {
     internal static class Utils
     {
-        public static async Task<(string version, string? downloadUrl)> GetLatestGitHubReleaseAssetAsync(HttpClient client, string owner, string repo, string? assetName, CancellationToken cancellationToken)
-        {
-            using var response = await client.GetAsync(
-               $"/repos/{owner}/{repo}/releases/latest",
-               HttpCompletionOption.ResponseHeadersRead,
-               cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-
-            await using (stream.ConfigureAwait(false))
-            {
-                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                var version = document.RootElement.GetProperty("tag_name").GetString();
-
-                if (assetName is { })
-                {
-                    foreach (var asset in document.RootElement.GetProperty("assets").EnumerateArray())
-                    {
-                        if (assetName.Equals(asset.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase))
-                        {
-                            var downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                            return (version, downloadUrl);
-                        }
-                    }
-                }
-
-                return (version, null);
-            }
-        }
-
         public static async Task<RefCountedFileLock> GetOrDownloadFileAsync(string filePath, HttpClient client, string downloadUrl, CancellationToken cancellationToken)
         {
             if (filePath is null || !Path.IsPathFullyQualified(filePath))

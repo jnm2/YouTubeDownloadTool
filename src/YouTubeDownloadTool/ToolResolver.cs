@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,13 +11,18 @@ namespace YouTubeDownloadTool
     {
         private readonly string cacheDirectory;
         private readonly string fileName;
+        private readonly Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync;
         private readonly TaskDeduplicator<LeaseSource> resolveDeduplicator;
         private LeaseSource? currentSource;
 
-        public ToolResolver(string cacheDirectory, string fileName)
+        public ToolResolver(
+            string cacheDirectory,
+            string fileName,
+            Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync)
         {
             this.cacheDirectory = cacheDirectory;
             this.fileName = fileName;
+            this.getLatestDownloadAsync = getLatestDownloadAsync;
             currentSource = GetCurrentCachedTool();
 
             resolveDeduplicator = new TaskDeduplicator<LeaseSource>(ResolveLatestToolAsync);
@@ -104,38 +106,19 @@ namespace YouTubeDownloadTool
 
         private async Task<LeaseSource> ResolveLatestToolAsync(CancellationToken cancellationToken)
         {
-            using var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
-            {
-                BaseAddress = new Uri("https://api.github.com"),
-                DefaultRequestHeaders =
-                {
-                    Accept = { new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json") }
-                }
-            };
-            client.DefaultRequestHeaders.Add("User-Agent", "YouTube download tool");
+            var download = await getLatestDownloadAsync.Invoke(cancellationToken).ConfigureAwait(false);
+            using var client = download.HttpClient;
 
-            const string assetToDownload = "youtube-dl.exe";
-
-            var (version, downloadUrl) = await Utils.GetLatestGitHubReleaseAssetAsync(
-                client,
-                owner: "ytdl-org",
-                repo: "youtube-dl",
-                assetToDownload,
-                cancellationToken);
-
-            if (downloadUrl is null)
-                throw new NotImplementedException($"Unable to find {assetToDownload} in latest GitHub release.");
-
-            if (currentSource is { } && string.Equals(version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
+            if (currentSource is { } && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
                 return currentSource;
 
             var fileLock = await Utils.GetOrDownloadFileAsync(
-                Path.Join(cacheDirectory, "v" + version, fileName),
+                Path.Join(cacheDirectory, "v" + download.Version, fileName),
                 client,
-                downloadUrl,
+                download.DownloadUrl,
                 cancellationToken);
 
-            var newSource = new LeaseSource(version, fileLock);
+            var newSource = new LeaseSource(download.Version, fileLock);
             ReplaceCurrentSource(newSource);
             return newSource;
         }
