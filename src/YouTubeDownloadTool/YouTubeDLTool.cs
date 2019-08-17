@@ -5,23 +5,17 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace YouTubeDownloadTool.YouTubeDL
+namespace YouTubeDownloadTool
 {
     public sealed class YouTubeDLTool
     {
         private readonly string executablePath;
 
-        public string Version { get; }
-
-        public YouTubeDLTool(string version, string executablePath)
+        public YouTubeDLTool(string executablePath)
         {
-            if (string.IsNullOrWhiteSpace(version))
-                throw new ArgumentException("Version must be specified.", nameof(version));
-
             if (executablePath is null || !Path.IsPathFullyQualified(executablePath))
-                throw new ArgumentException("Executable path must be fully qualified.", nameof(version));
+                throw new ArgumentException("Executable path must be fully qualified.", nameof(executablePath));
 
-            Version = version;
             this.executablePath = executablePath ?? throw new ArgumentNullException(nameof(executablePath));
         }
 

@@ -8,19 +8,19 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace YouTubeDownloadTool.YouTubeDL
+namespace YouTubeDownloadTool
 {
-    public sealed partial class YouTubeDLToolResolver : IDisposable
+    public sealed partial class ToolResolver : IDisposable
     {
-        private const string ExecutableFileName = "youtube-dl.exe";
-
         private readonly string cacheDirectory;
+        private readonly string fileName;
         private readonly TaskDeduplicator<LeaseSource> resolveDeduplicator;
         private LeaseSource? currentSource;
 
-        public YouTubeDLToolResolver(string cacheDirectory)
+        public ToolResolver(string cacheDirectory, string fileName)
         {
             this.cacheDirectory = cacheDirectory;
+            this.fileName = fileName;
             currentSource = GetCurrentCachedTool();
 
             resolveDeduplicator = new TaskDeduplicator<LeaseSource>(ResolveLatestToolAsync);
@@ -43,7 +43,7 @@ namespace YouTubeDownloadTool.YouTubeDL
             foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.version))
             {
                 if (info is (_, var rawVersion, { } directory)
-                    && RefCountedFileLock.CreateIfExists(Path.Join(directory, ExecutableFileName)) is { } fileLock)
+                    && RefCountedFileLock.CreateIfExists(Path.Join(directory, fileName)) is { } fileLock)
                 {
                     return new LeaseSource(rawVersion, fileLock);
                 }
@@ -62,7 +62,7 @@ namespace YouTubeDownloadTool.YouTubeDL
                 {
                     // Try to delete the file first because an instance of this app may be locking it in order to invoke
                     // the same version multiple times.
-                    File.Delete(Path.Join(directory, ExecutableFileName));
+                    File.Delete(Path.Join(directory, fileName));
                     Directory.Delete(directory, recursive: true);
                 }
                 catch (IOException)
@@ -71,7 +71,7 @@ namespace YouTubeDownloadTool.YouTubeDL
             }
         }
 
-        public async Task<YouTubeDLToolLease> LeaseToolAsync(CancellationToken cancellationToken)
+        public async Task<ToolLease> LeaseToolAsync(CancellationToken cancellationToken)
         {
             return (currentSource ?? await resolveDeduplicator.StartOrJoin(cancellationToken)).CreateLease();
         }
@@ -126,11 +126,11 @@ namespace YouTubeDownloadTool.YouTubeDL
             if (downloadUrl is null)
                 throw new NotImplementedException($"Unable to find {assetToDownload} in latest GitHub release.");
 
-            if (currentSource is { } && string.Equals(version, currentSource.Tool.Version, StringComparison.OrdinalIgnoreCase))
+            if (currentSource is { } && string.Equals(version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
                 return currentSource;
 
             var fileLock = await Utils.GetOrDownloadFileAsync(
-                Path.Join(cacheDirectory, "v" + version, ExecutableFileName),
+                Path.Join(cacheDirectory, "v" + version, fileName),
                 client,
                 downloadUrl,
                 cancellationToken);

@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace YouTubeDownloadTool.YouTubeDL
+namespace YouTubeDownloadTool
 {
-    partial class YouTubeDLToolResolver
+    partial class ToolResolver
     {
         private sealed class LeaseSource
         {
@@ -10,18 +10,18 @@ namespace YouTubeDownloadTool.YouTubeDL
             {
                 using var lease = OwnershipTracker.Create(fileLock.Lease());
 
-                Tool = new YouTubeDLTool(version, fileLock.FilePath);
+                Version = version;
                 FileLock = fileLock;
                 Lease = lease.ReleaseOwnership();
             }
 
-            public YouTubeDLTool Tool { get; }
+            public string Version { get; }
             public RefCountedFileLock FileLock { get; }
             public IDisposable Lease { get; }
 
-            public YouTubeDLToolLease CreateLease()
+            public ToolLease CreateLease()
             {
-                return new YouTubeDLToolLease(Tool, FileLock.Lease());
+                return new ToolLease(Version, FileLock.FilePath, FileLock.Lease());
             }
         }
     }

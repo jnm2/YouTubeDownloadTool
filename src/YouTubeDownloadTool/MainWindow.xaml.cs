@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Techsola;
-using YouTubeDownloadTool.YouTubeDL;
 
 namespace YouTubeDownloadTool
 {
@@ -22,14 +21,16 @@ namespace YouTubeDownloadTool
             var appDataDir = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "YouTube download tool");
             var toolCacheDir = Path.Join(appDataDir, "youtube-dl");
 
-            using var resolver = new YouTubeDLToolResolver(toolCacheDir);
+            using var resolver = new ToolResolver(toolCacheDir, "youtube-dl.exe");
             resolver.PurgeOldVersions();
 
             AmbientTasks.Add(resolver.CheckForUpdatesAsync(CancellationToken.None));
 
-            using var tool = await resolver.LeaseToolAsync(CancellationToken.None);
+            using var lease = await resolver.LeaseToolAsync(CancellationToken.None);
 
-            var result = await tool.Tool.DownloadToDirectoryAsync(
+            var tool = new YouTubeDLTool(lease.FilePath);
+
+            var result = await tool.DownloadToDirectoryAsync(
                 "https://youtu.be/xuCn8ux2gbs",
                 @"C:\Users\Joseph\Desktop\Test download destination",
                 audioOnly: true);

@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
-namespace YouTubeDownloadTool.YouTubeDL
+namespace YouTubeDownloadTool
 {
     [DebuggerDisplay("{ToString(),nq}")]
     public readonly struct DownloadResult : IEquatable<DownloadResult>
