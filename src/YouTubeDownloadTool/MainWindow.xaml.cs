@@ -22,6 +22,7 @@ namespace YouTubeDownloadTool
 
             var appDataDir = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), productName);
 
+
             using var youTubeDLResolver = new ToolResolver(
                 cacheDirectory: Path.Join(appDataDir, "youtube-dl"),
                 fileName: "youtube-dl.exe",
@@ -35,11 +36,25 @@ namespace YouTubeDownloadTool
 
             AmbientTasks.Add(youTubeDLResolver.CheckForUpdatesAsync(CancellationToken.None));
 
-            using var lease = await youTubeDLResolver.LeaseToolAsync(CancellationToken.None);
 
-            var tool = new YouTubeDLTool(lease.FilePath);
+            using var ffmpegResolver = new ToolResolver(
+                cacheDirectory: Path.Join(appDataDir, "ffmpeg"),
+                fileName: "ffmpeg.exe",
+                DownloadResolvers.DownloadPage(
+                    pageUrl: "https://ffmpeg.zeranoe.com/builds/win64/static/",
+                    linkFileNamePattern: "ffmpeg-*-win64-static.zip"));
 
-            var result = await tool.DownloadToDirectoryAsync(
+            ffmpegResolver.PurgeOldVersions();
+
+            AmbientTasks.Add(ffmpegResolver.CheckForUpdatesAsync(CancellationToken.None));
+
+
+            using var ffmpegLease = await ffmpegResolver.LeaseToolAsync(CancellationToken.None);
+            using var youTubeDLLease = await youTubeDLResolver.LeaseToolAsync(CancellationToken.None);
+
+            var youTubeDL = new YouTubeDLTool(youTubeDLLease.FilePath);
+
+            var result = await youTubeDL.DownloadToDirectoryAsync(
                 "https://youtu.be/xuCn8ux2gbs",
                 @"C:\Users\Joseph\Desktop\Test download destination",
                 audioOnly: true);
