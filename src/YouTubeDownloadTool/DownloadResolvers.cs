@@ -30,13 +30,8 @@ namespace YouTubeDownloadTool
                     new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
                     {
                         BaseAddress = new Uri("https://api.github.com"),
-                        DefaultRequestHeaders =
-                        {
-                            Accept = { new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json") }
-                        }
+                        DefaultRequestHeaders = { { "User-Agent", userAgent } }
                     });
-
-                client.OwnedInstance.DefaultRequestHeaders.Add("User-Agent", userAgent);
 
                 var (version, downloadUrl) = await GetLatestGitHubReleaseAssetAsync(client.OwnedInstance, owner, repo, assetName, cancellationToken);
 
@@ -49,10 +44,20 @@ namespace YouTubeDownloadTool
 
         private static async Task<(string version, string? downloadUrl)> GetLatestGitHubReleaseAssetAsync(HttpClient client, string owner, string repo, string? assetName, CancellationToken cancellationToken)
         {
-            using var response = await client.GetAsync(
-               $"/repos/{owner}/{repo}/releases/latest",
+            using var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"/repos/{owner}/{repo}/releases/latest", UriKind.Relative),
+                Headers =
+                {
+                    Accept = { new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json") }
+                }
+            };
+
+            using var response = await client.SendAsync(
+               request,
                HttpCompletionOption.ResponseHeadersRead,
                cancellationToken).ConfigureAwait(false);
+
             response.EnsureSuccessStatusCode();
 
             var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
