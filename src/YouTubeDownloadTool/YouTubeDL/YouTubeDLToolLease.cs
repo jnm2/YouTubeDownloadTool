@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 
-namespace YouTubeDownloadTool
+namespace YouTubeDownloadTool.YouTubeDL
 {
     public sealed class YouTubeDLToolLease : IDisposable
     {

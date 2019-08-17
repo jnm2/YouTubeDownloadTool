@@ -8,7 +8,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace YouTubeDownloadTool
+namespace YouTubeDownloadTool.YouTubeDL
 {
     public sealed partial class YouTubeDLToolResolver : IDisposable
     {

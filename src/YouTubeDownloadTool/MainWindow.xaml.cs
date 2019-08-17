@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Techsola;
+using YouTubeDownloadTool.YouTubeDL;
 
 namespace YouTubeDownloadTool
 {
@@ -28,9 +29,22 @@ namespace YouTubeDownloadTool
 
             using var tool = await resolver.LeaseToolAsync(CancellationToken.None);
 
-            await tool.Tool.DownloadToDirectoryAsync(
+            var result = await tool.Tool.DownloadToDirectoryAsync(
                 "https://youtu.be/xuCn8ux2gbs",
-                @"C:\Users\Joseph\Desktop\Test download destination");
+                @"C:\Users\Joseph\Desktop\Test download destination",
+                audioOnly: true);
+
+            if (result.IsError(out var message, out var exitCode))
+            {
+                MessageBox.Show(
+                    this,
+                    $"Youtube-dl.exe exited with code {exitCode} and this message:" + Environment.NewLine
+                        + Environment.NewLine
+                        + message,
+                    "Download error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
     }
 }

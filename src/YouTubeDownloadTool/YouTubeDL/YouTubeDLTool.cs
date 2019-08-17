@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace YouTubeDownloadTool
+namespace YouTubeDownloadTool.YouTubeDL
 {
     public sealed class YouTubeDLTool
     {
@@ -24,7 +25,7 @@ namespace YouTubeDownloadTool
             this.executablePath = executablePath ?? throw new ArgumentNullException(nameof(executablePath));
         }
 
-        public async Task DownloadToDirectoryAsync(string url, string destinationDirectory)
+        public async Task<DownloadResult> DownloadToDirectoryAsync(string url, string destinationDirectory, bool audioOnly = false)
         {
             if (string.IsNullOrWhiteSpace(url))
                 throw new ArgumentException("URL must be specified.", nameof(url));
@@ -42,16 +43,44 @@ namespace YouTubeDownloadTool
                     WorkingDirectory = destinationDirectory,
                     FileName = executablePath,
                     CreateNoWindow = true,
-                    ArgumentList = { url }
+                    ArgumentList = { url },
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
                 }
             };
 
+            if (audioOnly) process.StartInfo.ArgumentList.Add("--extract-audio");
+
+            var output = new List<(bool isError, string line)>();
+
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (e.Data is { }) output.Add((isError: false, e.Data));
+            };
+
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (e.Data is { }) output.Add((isError: true, e.Data));
+            };
+
             process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
 
             await process.WaitForExitAsync();
 
             if (process.ExitCode != 0)
-                throw new NotImplementedException("youtube-dl.exe exited with code " + process.ExitCode);
+            {
+                var errorMessage = string.Join(
+                    Environment.NewLine,
+                    from part in output
+                    where part.isError
+                    select part.line);
+
+                return DownloadResult.Error(errorMessage, process.ExitCode);
+            }
+
+            return DownloadResult.Success;
         }
     }
 }

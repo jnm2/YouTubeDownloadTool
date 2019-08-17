@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace YouTubeDownloadTool
+namespace YouTubeDownloadTool.YouTubeDL
 {
     partial class YouTubeDLToolResolver
     {
