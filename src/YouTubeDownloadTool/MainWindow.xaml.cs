@@ -53,7 +53,9 @@ namespace YouTubeDownloadTool
             using var ffmpegLease = await ffmpegResolver.LeaseToolAsync(CancellationToken.None);
             using var youTubeDLLease = await youTubeDLResolver.LeaseToolAsync(CancellationToken.None);
 
-            var youTubeDL = new YouTubeDLTool(youTubeDLLease.FilePath);
+            var youTubeDL = new YouTubeDLTool(
+                youTubeDLLease.FilePath,
+                ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!);
 
             var result = await youTubeDL.DownloadToDirectoryAsync(
                 "https://youtu.be/xuCn8ux2gbs",

@@ -10,13 +10,21 @@ namespace YouTubeDownloadTool
     public sealed class YouTubeDLTool
     {
         private readonly string executablePath;
+        private readonly string ffmpegDirectory;
 
-        public YouTubeDLTool(string executablePath)
+        public YouTubeDLTool(string executablePath, string ffmpegDirectory)
         {
             if (executablePath is null || !Path.IsPathFullyQualified(executablePath))
                 throw new ArgumentException("Executable path must be fully qualified.", nameof(executablePath));
 
-            this.executablePath = executablePath ?? throw new ArgumentNullException(nameof(executablePath));
+            if (ffmpegDirectory is null || !Path.IsPathFullyQualified(ffmpegDirectory))
+                throw new ArgumentException("Ffmpeg directory path must be fully qualified.", nameof(ffmpegDirectory));
+
+            if (!File.Exists(Path.Join(ffmpegDirectory, "ffmpeg.exe")))
+                throw new ArgumentException("Ffmpeg.exe does not exist in the specified directory.", nameof(ffmpegDirectory));
+
+            this.executablePath = executablePath;
+            this.ffmpegDirectory = ffmpegDirectory;
         }
 
         public async Task<DownloadResult> DownloadToDirectoryAsync(string url, string destinationDirectory, bool audioOnly = false)
@@ -42,6 +50,8 @@ namespace YouTubeDownloadTool
                     RedirectStandardError = true
                 }
             };
+
+            process.StartInfo.Environment["PATH"] += ";" + ffmpegDirectory;
 
             if (audioOnly) process.StartInfo.ArgumentList.Add("--extract-audio");
 
