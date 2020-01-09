@@ -53,7 +53,7 @@ namespace YouTubeDownloadTool
 
                         foreach (Group? group in match.Groups)
                         {
-                            if (Version.TryParse(group?.Value, out var versionCandidate))
+                            if (Version.TryParse(group!.Value, out var versionCandidate))
                             {
                                 if (current is { })
                                     throw new NotImplementedException("More than one wildcard match may represent a version.");
