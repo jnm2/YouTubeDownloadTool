@@ -1,5 +1,4 @@
 ﻿using LtGt;
-using LtGt.Models;
 using System;
 using System.IO;
 using System.Linq;
@@ -41,7 +40,7 @@ namespace YouTubeDownloadTool
 
                 var page = await client.OwnedInstance.GetStringAsync(pageUrl).ConfigureAwait(false);
 
-                var document = HtmlParser.Default.ParseDocument(page);
+                var document = Html.ParseDocument(page);
 
                 var max = ((Version version, string rawVersion, string href)?)null;
 
