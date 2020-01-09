@@ -61,13 +61,13 @@ namespace YouTubeDownloadTool
                             }
                         }
 
-                        if (current is (var version, var rawVersion))
+                        if (current is var (version, rawVersion))
                             max = (version, rawVersion, href);
                     }
                 }
 
                 {
-                    if (max is (_, var rawVersion, var href))
+                    if (max is var (_, rawVersion, href))
                     {
                         var downloadUrl = new Uri(baseUri: new Uri(pageUrl), relativeUri: href).AbsoluteUri;
                         var streamTransform = getStreamTransformForVersion?.Invoke(rawVersion);
