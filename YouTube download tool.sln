@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29209.152
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "YouTubeDownloadTool", "src\YouTubeDownloadTool\YouTubeDownloadTool.csproj", "{3F15C158-ADA8-4817-A109-23DC63E4D82A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "YouTubeDownloadTool", "src\YouTubeDownloadTool\YouTubeDownloadTool.csproj", "{3F15C158-ADA8-4817-A109-23DC63E4D82A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

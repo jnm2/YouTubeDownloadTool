@@ -5,7 +5,6 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
 
-    <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
     <Features>strict</Features>
   </PropertyGroup>
