@@ -1,4 +1,4 @@
-﻿namespace YouTubeDownloadTool
+namespace YouTubeDownloadTool
 {
     internal enum WinErrorCode : ushort
     {

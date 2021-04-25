@@ -1,4 +1,4 @@
-﻿using LtGt;
+using LtGt;
 using System;
 using System.IO;
 using System.Linq;
