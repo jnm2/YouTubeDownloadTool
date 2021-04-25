@@ -1,12 +1,9 @@
-using LtGt;
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,72 +11,6 @@ namespace YouTubeDownloadTool
 {
     public static class DownloadResolvers
     {
-        public static Func<CancellationToken, Task<AvailableToolDownload>> DownloadPage(
-            string pageUrl,
-            string linkFileNamePattern,
-            Func<string, Func<Stream, Stream>?>? getStreamTransformForVersion = null)
-        {
-            if (string.IsNullOrWhiteSpace(pageUrl))
-                throw new ArgumentException("Page URL must be specified.", nameof(pageUrl));
-
-            if (string.IsNullOrWhiteSpace(linkFileNamePattern))
-                throw new ArgumentException("Link URL pattern must be specified.", nameof(linkFileNamePattern));
-
-            var parts = linkFileNamePattern.Split('*', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 2)
-                throw new ArgumentException("There must be at least one asterisk as a wildcard to match the version part of the URL.", nameof(linkFileNamePattern));
-
-            var regex = new Regex(
-                @"(?:\A|\\|/)" + string.Join("(.*)", parts.Select(Regex.Escape)) + @"\Z",
-                RegexOptions.IgnoreCase);
-
-            return async cancellationToken =>
-            {
-                using var client = OwnershipTracker.Create(
-                    new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All }));
-
-                var page = await client.OwnedInstance.GetStringAsync(pageUrl, cancellationToken).ConfigureAwait(false);
-
-                var document = Html.ParseDocument(page);
-
-                var max = ((Version version, string rawVersion, string href)?)null;
-
-                foreach (var link in document.GetElementsByTagName("a"))
-                {
-                    if (link.GetAttribute("href") is { Value: { } href }
-                        && regex.Match(href) is { Success: true } match)
-                    {
-                        var current = ((Version version, string rawVersion)?)null;
-
-                        foreach (Group? group in match.Groups)
-                        {
-                            if (Version.TryParse(group!.Value, out var versionCandidate))
-                            {
-                                if (current is { })
-                                    throw new NotImplementedException("More than one wildcard match may represent a version.");
-                                current = (versionCandidate, group.Value);
-                            }
-                        }
-
-                        if (current is var (version, rawVersion))
-                            max = (version, rawVersion, href);
-                    }
-                }
-
-                {
-                    if (max is var (_, rawVersion, href))
-                    {
-                        var downloadUrl = new Uri(baseUri: new Uri(pageUrl), relativeUri: href).AbsoluteUri;
-                        var streamTransform = getStreamTransformForVersion?.Invoke(rawVersion);
-
-                        return new AvailableToolDownload(rawVersion, client.ReleaseOwnership(), downloadUrl, streamTransform);
-                    }
-                }
-
-                throw new NotImplementedException("No link on the page had a URL that matched the specified pattern with a wildcard matching a parseable version.");
-            };
-        }
-
         public static Func<CancellationToken, Task<AvailableToolDownload>> GitHubReleaseAsset(
             string owner,
             string repo,

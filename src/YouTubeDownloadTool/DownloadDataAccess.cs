@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,10 +26,19 @@ namespace YouTubeDownloadTool
             ffmpegResolver = new ToolResolver(
                 cacheDirectory: Path.Join(toolCachePath, "ffmpeg"),
                 fileName: "ffmpeg.exe",
-                DownloadResolvers.DownloadPage(
-                    pageUrl: "https://ffmpeg.zeranoe.com/builds/win64/static/",
-                    linkFileNamePattern: "ffmpeg-*-win64-static.zip",
-                    version => StreamTransforms.UnzipSingleFile($"ffmpeg-{version}-win64-static/bin/ffmpeg.exe")));
+                getLatestDownloadAsync: async cancellationToken =>
+                {
+                    using var client = OwnershipTracker.Create(
+                        new HttpClient(new HttpClientHandler {AutomaticDecompression = DecompressionMethods.All}));
+
+                    var version = await client.OwnedInstance.GetStringAsync("https://www.gyan.dev/ffmpeg/builds/release-version", cancellationToken).ConfigureAwait(false);
+
+                    return new AvailableToolDownload(
+                        version,
+                        client.ReleaseOwnership(),
+                        downloadUrl: "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+                        StreamTransforms.UnzipSingleFile($"ffmpeg-{version}-essentials_build/bin/ffmpeg.exe"));
+                });
         }
 
         public void Dispose()

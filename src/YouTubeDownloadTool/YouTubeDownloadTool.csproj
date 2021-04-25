@@ -9,7 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="AmbientTasks" Version="1.0.1" />
-    <PackageReference Include="LtGt" Version="2.1.0" />
     <PackageReference Include="PropertyChangedAnalyzers" Version="3.2.2" PrivateAssets="all" />
     <PackageReference Include="WpfAnalyzers" Version="3.5.4" PrivateAssets="all" />
   </ItemGroup>
