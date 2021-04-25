@@ -55,16 +55,16 @@ namespace YouTubeDownloadTool
 
             if (audioOnly) process.StartInfo.ArgumentList.Add("--extract-audio");
 
-            var output = new List<(bool isError, string line)>();
+            var output = new List<(bool IsError, string Line)>();
 
             process.OutputDataReceived += (sender, e) =>
             {
-                if (e.Data is { }) output.Add((isError: false, e.Data));
+                if (e.Data is { }) output.Add((IsError: false, e.Data));
             };
 
             process.ErrorDataReceived += (sender, e) =>
             {
-                if (e.Data is { }) output.Add((isError: true, e.Data));
+                if (e.Data is { }) output.Add((IsError: true, e.Data));
             };
 
             process.Start();
@@ -78,8 +78,8 @@ namespace YouTubeDownloadTool
                 var errorMessage = string.Join(
                     Environment.NewLine,
                     from part in output
-                    where part.isError
-                    select part.line);
+                    where part.IsError
+                    select part.Line);
 
                 return DownloadResult.Error(errorMessage, process.ExitCode);
             }

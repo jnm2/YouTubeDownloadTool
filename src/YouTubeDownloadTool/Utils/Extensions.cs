@@ -8,7 +8,7 @@ namespace YouTubeDownloadTool
 {
     internal static class Extensions
     {
-        public static IEnumerable<TResult> SelectWhere<T, TResult>(this IEnumerable<T> source, Func<T, (bool success, TResult result)> tryPatternSelector)
+        public static IEnumerable<TResult> SelectWhere<T, TResult>(this IEnumerable<T> source, Func<T, (bool Success, TResult Result)> tryPatternSelector)
         {
             foreach (var value in source)
             {

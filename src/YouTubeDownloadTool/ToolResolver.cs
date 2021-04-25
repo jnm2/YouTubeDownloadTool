@@ -42,7 +42,7 @@ namespace YouTubeDownloadTool
 
         private LeaseSource? GetCurrentCachedTool()
         {
-            foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.version))
+            foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.Version))
             {
                 if (info is (_, var rawVersion, { } directory)
                     && RefCountedFileLock.CreateIfExists(Path.Join(directory, fileName)) is { } fileLock)
@@ -58,7 +58,7 @@ namespace YouTubeDownloadTool
         {
             var versionDirectories = TryGetVersionDirectories();
 
-            foreach (var (_, _, directory) in versionDirectories.OrderBy(d => d.version).SkipLast(1))
+            foreach (var (_, _, directory) in versionDirectories.OrderBy(d => d.Version).SkipLast(1))
             {
                 try
                 {
@@ -83,7 +83,7 @@ namespace YouTubeDownloadTool
             await resolveDeduplicator.StartOrJoin(cancellationToken);
         }
 
-        private IEnumerable<(Version version, string rawVersion, string directory)> TryGetVersionDirectories()
+        private IEnumerable<(Version Version, string RawVersion, string Directory)> TryGetVersionDirectories()
         {
             string[] directories;
             try
@@ -99,8 +99,8 @@ namespace YouTubeDownloadTool
             {
                 var rawVersion = Path.GetFileName(directory)[1..];
                 return (
-                    success: Version.TryParse(rawVersion, out var version),
-                    result: (version: version!, rawVersion, directory));
+                    Success: Version.TryParse(rawVersion, out var version),
+                    Result: (version!, rawVersion, directory));
             });
         }
 
