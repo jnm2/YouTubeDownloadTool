@@ -143,7 +143,7 @@ namespace YouTubeDownloadTool
             {
                 using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                var version = document.RootElement.GetProperty("tag_name").GetString();
+                var version = document.RootElement.GetProperty("tag_name").GetString()!;
 
                 if (assetName is { })
                 {
@@ -151,7 +151,7 @@ namespace YouTubeDownloadTool
                     {
                         if (assetName.Equals(asset.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase))
                         {
-                            var downloadUrl = asset.GetProperty("browser_download_url").GetString();
+                            var downloadUrl = asset.GetProperty("browser_download_url").GetString()!;
                             return (version, downloadUrl);
                         }
                     }

@@ -11,7 +11,8 @@ namespace YouTubeDownloadTool
             if (string.IsNullOrWhiteSpace(zippedPath))
                 throw new ArgumentException("Zipped path must be specified.", nameof(zippedPath));
 
-            return stream => new ZipArchive(stream).GetEntry(zippedPath).Open();
+            return stream => new ZipArchive(stream).GetEntry(zippedPath)?.Open()
+                ?? throw new InvalidOperationException("No entry was found with the following path: " + zippedPath);
         }
     }
 }

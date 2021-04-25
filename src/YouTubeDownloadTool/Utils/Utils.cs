@@ -29,7 +29,7 @@ namespace YouTubeDownloadTool
 
                 do
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+                    Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
                     try
                     {
                         File.Move(tempFile.Path, filePath);
