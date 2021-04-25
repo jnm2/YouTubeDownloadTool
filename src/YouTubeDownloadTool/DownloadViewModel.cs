@@ -8,7 +8,7 @@ namespace YouTubeDownloadTool
     public sealed class DownloadViewModel : ViewModel
     {
         private readonly IDownloadDataAccess dataAccess;
-        private readonly CancellationTokenSource downloadRemoved = new CancellationTokenSource();
+        private readonly CancellationTokenSource downloadRemoved = new();
 
         public DownloadViewModel(string url, IDownloadDataAccess dataAccess)
         {

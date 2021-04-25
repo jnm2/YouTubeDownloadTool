@@ -38,7 +38,7 @@ namespace YouTubeDownloadTool
                 this.process = process ?? throw new ArgumentNullException(nameof(process));
             }
 
-            public ProcessExitAwaiter GetAwaiter() => new ProcessExitAwaiter(process);
+            public ProcessExitAwaiter GetAwaiter() => new(process);
 
             public readonly struct ProcessExitAwaiter : ICriticalNotifyCompletion
             {

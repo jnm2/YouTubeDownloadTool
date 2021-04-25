@@ -38,7 +38,7 @@ namespace YouTubeDownloadTool
                 using var client = OwnershipTracker.Create(
                     new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All }));
 
-                var page = await client.OwnedInstance.GetStringAsync(pageUrl).ConfigureAwait(false);
+                var page = await client.OwnedInstance.GetStringAsync(pageUrl, cancellationToken).ConfigureAwait(false);
 
                 var document = Html.ParseDocument(page);
 
@@ -137,7 +137,7 @@ namespace YouTubeDownloadTool
 
             response.EnsureSuccessStatusCode();
 
-            var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
             await using (stream.ConfigureAwait(false))
             {

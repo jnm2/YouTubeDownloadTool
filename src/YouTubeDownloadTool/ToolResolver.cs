@@ -97,7 +97,7 @@ namespace YouTubeDownloadTool
 
             return directories.SelectWhere(directory =>
             {
-                var rawVersion = Path.GetFileName(directory).Substring(1);
+                var rawVersion = Path.GetFileName(directory)[1..];
                 return (
                     success: Version.TryParse(rawVersion, out var version),
                     result: (version: version!, rawVersion, directory));

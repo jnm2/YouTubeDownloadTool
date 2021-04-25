@@ -33,7 +33,7 @@ namespace YouTubeDownloadTool
 
             response.EnsureSuccessStatusCode();
 
-            var stream = await response.Content.ReadAsStreamAsync();
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
             return streamTransform is { }
                 ? streamTransform.Invoke(stream)
