@@ -1,19 +1,46 @@
+using System;
 using System.Windows;
-using Techsola;
+using System.Windows.Controls;
 
 namespace YouTubeDownloadTool
 {
     public partial class MainWindow : Window
     {
-        public MainWindow(MainViewModel viewModel)
+        public MainWindow()
         {
             InitializeComponent();
-            DataContext = viewModel;
+            Activated += OnShown;
 
-            viewModel.DownloadUrls = "https://youtu.be/xuCn8ux2gbs";
+            UrlTextBox.Focus();
+        }
 
-            AmbientTasks.Add(viewModel.Downloads[0].DownloadAsync(
-                ViewUtils.CreateErrorMessageHandler(owner: this)));
+        private void OnShown(object? sender, EventArgs e)
+        {
+            Activated -= OnShown;
+
+            if (UrlTextBox.IsFocused
+                && string.IsNullOrWhiteSpace(UrlTextBox.Text)
+                && Uri.TryCreate(Clipboard.GetText(), UriKind.Absolute, out var uri)
+                && uri.Scheme is "http" or "https")
+            {
+                UrlTextBox.UpdateBinding(TextBox.TextProperty, uri.ToString());
+                UrlTextBox.SelectAll();
+            }
+        }
+
+        private void OnBrowseButtonClick(object? sender, RoutedEventArgs e)
+        {
+            using var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select destination",
+                UseDescriptionForTitle = true,
+                SelectedPath = DestinationTextBox.Text,
+            };
+
+            if (dialog.ShowDialog(owner: this) == System.Windows.Forms.DialogResult.OK)
+            {
+                DestinationTextBox.UpdateBinding(TextBox.TextProperty, dialog.SelectedPath);
+            }
         }
     }
 }

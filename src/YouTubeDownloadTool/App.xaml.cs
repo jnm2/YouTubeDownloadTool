@@ -16,7 +16,12 @@ namespace YouTubeDownloadTool
                 toolCachePath: appDataDir,
                 userAgent: ProductName);
 
-            var window = new MainWindow(new MainViewModel(dataAccess));
+            var window = new MainWindow();
+
+            window.DataContext = new MainViewModel(
+                dataAccess,
+                ViewUtils.CreateErrorMessageHandler(window));
+
             window.Closed += (sender, args) => dataAccess.Dispose();
             window.Show();
         }

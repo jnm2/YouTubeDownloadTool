@@ -57,12 +57,12 @@ namespace YouTubeDownloadTool
                 ffmpegResolver.CheckForUpdatesAsync(cancellationToken)).ConfigureAwait(false);
         }
 
-        public Task<DownloadDetails?> GetDetailsIfDownloadableAsync(string url, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<DownloadResult> DownloadAsync(string url, string destinationDirectory, bool audioOnly, CancellationToken cancellationToken, IProgress<double>? progress)
+        public async Task<DownloadResult> DownloadAsync(
+            string url,
+            string destinationDirectory,
+            bool audioOnly,
+            CancellationToken cancellationToken,
+            IProgress<double?>? progress)
         {
             using var ffmpegLease = await ffmpegResolver.LeaseToolAsync(CancellationToken.None);
             using var youTubeDLLease = await youTubeDLResolver.LeaseToolAsync(CancellationToken.None);
@@ -71,7 +71,7 @@ namespace YouTubeDownloadTool
                 youTubeDLLease.FilePath,
                 ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!);
 
-            return await youTubeDL.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly).ConfigureAwait(false);
+            return await youTubeDL.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, progress).ConfigureAwait(false);
         }
     }
 }

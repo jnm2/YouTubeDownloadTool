@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Windows;
+using System.Windows.Interop;
 
 namespace YouTubeDownloadTool
 {
@@ -93,6 +95,34 @@ namespace YouTubeDownloadTool
                         throw new InvalidOperationException("GetResult may only be called after IsCompleted returns true or OnCompleted invokes a callback.");
                 }
             }
+        }
+
+        public static System.Windows.Forms.DialogResult ShowDialog(this System.Windows.Forms.CommonDialog dialog, Window owner)
+        {
+            return dialog.ShowDialog(owner.AsWindowsFormsWindow());
+        }
+
+        public static System.Windows.Forms.IWin32Window AsWindowsFormsWindow(this Window window)
+        {
+            return new WindowsFormsWindow(window);
+        }
+
+        private sealed class WindowsFormsWindow : System.Windows.Forms.IWin32Window
+        {
+            private readonly Window window;
+
+            public WindowsFormsWindow(Window window)
+            {
+                this.window = window;
+            }
+
+            public IntPtr Handle => new WindowInteropHelper(window).Handle;
+        }
+
+        public static void UpdateBinding(this FrameworkElement frameworkElement, DependencyProperty boundProperty, object? newValue)
+        {
+            frameworkElement.SetCurrentValue(boundProperty, newValue);
+            frameworkElement.GetBindingExpression(boundProperty).UpdateSource();
         }
     }
 }

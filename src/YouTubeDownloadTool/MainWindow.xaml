@@ -4,14 +4,55 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:YouTubeDownloadTool"
+        d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <TextBox Text="{Binding DownloadUrls}" MinWidth="250" AcceptsReturn="True" />
-        <ListBox Grid.Column="1" />
+        Title="YouTube download tool" Background="#F1F1F1" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight">
+    <Grid Height="180" Width="480" Margin="24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid IsEnabled="{Binding IsEditable}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Label Target="{Binding ElementName=UrlTextBox}" Content="_Source page URL" />
+            <TextBox Grid.Row="1" Name="UrlTextBox" Text="{Binding DownloadUrl}" Margin="0,0,0,12" />
+            <CheckBox Grid.Row="2" IsChecked="{Binding AudioOnly}" Margin="0,0,0,12" Content="_Audio only" />
+            <Label Grid.Row="3" Target="{Binding ElementName=DestinationTextBox}" Content="_Destination folder" />
+            <Grid Grid.Row="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Name="DestinationTextBox" Text="{Binding DestinationFolder}" />
+                <Button Grid.Column="1" Margin="8,0,0,0" Click="OnBrowseButtonClick" Content="_Browse…" />
+            </Grid>
+        </Grid>
+        <Grid Grid.Row="1" Margin="0,24,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ProgressBar
+                Maximum="1"
+                Value="{Binding ProgressFraction}"
+                IsIndeterminate="{Binding ProgressFraction, Converter={x:Static local:IsNullConverter.Instance}}"
+                Visibility="{Binding IsProgressBarVisible, Converter={x:Static local:BooleanToVisibilityConverter.HiddenWhenFalse}}" />
+            <Button
+                Grid.Column="1"
+                Style="{StaticResource DefaultButton}"
+                HorizontalAlignment="Right"
+                Margin="24,0,0,0"
+                Command="{Binding Start}"
+                Visibility="{Binding RelativeSource={RelativeSource Self}, Path=IsEnabled, Converter={x:Static local:BooleanToVisibilityConverter.HiddenWhenFalse}}"
+                Content="Sta_rt" />
+        </Grid>
     </Grid>
 </Window>

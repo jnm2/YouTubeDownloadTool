@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Interop;
 
 namespace YouTubeDownloadTool
 {
@@ -9,12 +10,14 @@ namespace YouTubeDownloadTool
         {
             return errorMessage =>
             {
-                MessageBox.Show(
-                    owner,
-                    errorMessage,
-                    owner.Title,
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                System.Windows.Forms.TaskDialog.ShowDialog(
+                    new WindowInteropHelper(owner).Handle,
+                    new()
+                    {
+                        Caption = owner.Title,
+                        Text = errorMessage,
+                        Icon = System.Windows.Forms.TaskDialogIcon.Error,
+                    });
             };
         }
     }

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace YouTubeDownloadTool
@@ -27,13 +29,15 @@ namespace YouTubeDownloadTool
             this.ffmpegDirectory = ffmpegDirectory;
         }
 
-        public async Task<DownloadResult> DownloadToDirectoryAsync(string url, string destinationDirectory, bool audioOnly = false)
+        public async Task<DownloadResult> DownloadToDirectoryAsync(string url, string destinationDirectory, bool audioOnly = false, IProgress<double?>? progress = null)
         {
             if (string.IsNullOrWhiteSpace(url))
                 throw new ArgumentException("URL must be specified.", nameof(url));
 
             if (destinationDirectory is null || !Path.IsPathFullyQualified(destinationDirectory))
                 throw new ArgumentException("The destination directory path must be fully qualified.", nameof(destinationDirectory));
+
+            progress?.Report(null);
 
             Directory.CreateDirectory(destinationDirectory);
 
@@ -51,20 +55,60 @@ namespace YouTubeDownloadTool
                 }
             };
 
-            process.StartInfo.Environment["PATH"] += ";" + ffmpegDirectory;
+            process.StartInfo.ArgumentList.Add("--ffmpeg-location");
+            process.StartInfo.ArgumentList.Add(ffmpegDirectory);
 
             if (audioOnly) process.StartInfo.ArgumentList.Add("--extract-audio");
 
             var output = new List<(bool IsError, string Line)>();
 
+            var downloadNumber = 0;
+            var progressRangeStart = 0.0;
+            var progressRangeLength = 0.95;
+
             process.OutputDataReceived += (sender, e) =>
             {
-                if (e.Data is { }) output.Add((IsError: false, e.Data));
+                if (e.Data is null) return;
+
+                if (e.Data.StartsWith("[download] ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var downloadInfo = e.Data["[download] ".Length..];
+
+                    if (Regex.Match(downloadInfo, @"\s*(?<percent>[\d.]+)%") is { Success: true } match)
+                    {
+                        var downloadPercent = double.Parse(match.Groups["percent"].Value, NumberStyles.Number, CultureInfo.CurrentCulture);
+                        progress?.Report(progressRangeStart + (downloadPercent * 0.01 * progressRangeLength));
+                    }
+                    else if (downloadInfo.StartsWith("Destination:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        downloadNumber++;
+                        if (downloadNumber > 1)
+                        {
+                            progressRangeStart += progressRangeLength;
+                            progressRangeLength = (1 - progressRangeStart) / 2;
+                        }
+                    }
+                }
+                else if (e.Data.StartsWith("[ffmpeg] ", StringComparison.OrdinalIgnoreCase))
+                {
+                    progress?.Report(null);
+                }
+
+                output.Add((IsError: false, e.Data));
             };
 
             process.ErrorDataReceived += (sender, e) =>
             {
-                if (e.Data is { }) output.Add((IsError: true, e.Data));
+                if (e.Data is null) return;
+
+                if (progressRangeStart == 0
+                    && e.Data.StartsWith("WARNING: Requested formats are incompatible for merge", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Audio file will be downloaded separately, so reserve an extra 5% for the second file.
+                    progressRangeLength = 0.90;
+                }
+
+                output.Add((IsError: true, e.Data));
             };
 
             process.Start();
