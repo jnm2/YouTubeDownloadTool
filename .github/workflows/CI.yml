@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ '*' ] # excludes tags
+  pull_request: ~     # Pull requests to any branch should gain this status info
+
+env:
+  DOTNET_NOLOGO: true
+
+jobs:
+  CI:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0 # Needed in order for tags to be available so prereleases autoincrement the version
+
+    - name: Build
+      run: ./build.ps1
+
+    - name: Upload bin artifact
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: Bin
+        path: artifacts/Bin/YouTubeDownloadTool.exe
+
+    - name: Upload symbols artifact
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: Symbols
+        path: artifacts/Bin/YouTubeDownloadTool.pdb
+
+    - name: Upload logs artifact
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: Logs
+        path: artifacts/Logs

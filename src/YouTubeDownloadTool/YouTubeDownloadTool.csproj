@@ -6,7 +6,20 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
+    <EmbedAllSources>true</EmbedAllSources>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win10-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Product>YouTube download tool</Product>
+    <AssemblyTitle>YouTube download tool</AssemblyTitle>
+    <Company>Joseph Musser</Company>
+    <Copyright>Copyright © 2019–2021 Joseph Musser</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
