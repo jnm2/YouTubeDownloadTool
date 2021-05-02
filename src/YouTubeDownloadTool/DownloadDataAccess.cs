@@ -65,8 +65,8 @@ namespace YouTubeDownloadTool
             IProgress<double?>? progress,
             IProgress<string?>? status)
         {
-            using var ffmpegLease = await ffmpegResolver.LeaseToolAsync(CancellationToken.None);
-            using var youTubeDLLease = await youTubeDLResolver.LeaseToolAsync(CancellationToken.None);
+            using var ffmpegLease = await ffmpegResolver.LeaseToolAsync(cancellationToken);
+            using var youTubeDLLease = await youTubeDLResolver.LeaseToolAsync(cancellationToken);
 
             var youTubeDL = new YouTubeDLTool(
                 youTubeDLLease.FilePath,
