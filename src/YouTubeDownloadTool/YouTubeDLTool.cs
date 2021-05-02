@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace YouTubeDownloadTool
@@ -33,6 +34,7 @@ namespace YouTubeDownloadTool
             string url,
             string destinationDirectory,
             bool audioOnly = false,
+            CancellationToken cancellationToken = default,
             IProgress<double?>? progress = null,
             IProgress<string?>? status = null)
         {
@@ -124,11 +126,15 @@ namespace YouTubeDownloadTool
                 output.Add((IsError: true, e.Data));
             };
 
+            cancellationToken.ThrowIfCancellationRequested();
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync();
+            using (cancellationToken.Register(process.Kill))
+                await process.WaitForExitAsync(CancellationToken.None);
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (process.ExitCode != 0)
             {

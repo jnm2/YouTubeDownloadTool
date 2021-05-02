@@ -53,11 +53,17 @@
             <Button
                 Grid.Column="1"
                 Style="{StaticResource DefaultButton}"
-                HorizontalAlignment="Right"
                 Margin="24,0,0,0"
                 Command="{Binding Start}"
                 Visibility="{Binding RelativeSource={RelativeSource Self}, Path=IsEnabled, Converter={x:Static local:BooleanToVisibilityConverter.HiddenWhenFalse}}"
                 Content="Sta_rt" />
+            <Button
+                Grid.Column="1"
+                IsCancel="True"
+                Margin="24,0,0,0"
+                Command="{Binding Cancel}"
+                Visibility="{Binding RelativeSource={RelativeSource Self}, Path=IsEnabled, Converter={x:Static local:BooleanToVisibilityConverter.HiddenWhenFalse}}"
+                Content="_Cancel" />
         </Grid>
     </Grid>
 </Window>

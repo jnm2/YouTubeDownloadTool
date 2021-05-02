@@ -9,6 +9,8 @@ namespace YouTubeDownloadTool
 {
     public sealed class MainViewModel : ViewModel
     {
+        private CancellationTokenSource? cancelSource;
+
         private readonly IDownloadDataAccess dataAccess;
         private readonly Action<(string Message, bool IsError)> showNotification;
 
@@ -35,6 +37,8 @@ namespace YouTubeDownloadTool
 
         public Command Start { get; }
 
+        public Command Cancel { get; }
+
         public MainViewModel(IDownloadDataAccess dataAccess, Action<(string Message, bool IsError)> showNotification)
         {
             this.dataAccess = dataAccess;
@@ -47,6 +51,7 @@ namespace YouTubeDownloadTool
                 : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 
             Start = new Command(StartAsync);
+            Cancel = new Command(() => cancelSource!.Cancel()) { CanExecute = false };
 
             AmbientTasks.Add(dataAccess.CheckForToolUpdatesAsync(CancellationToken.None));
         }
@@ -85,6 +90,8 @@ namespace YouTubeDownloadTool
             ProgressFraction = null;
             IsProgressBarVisible = true;
             Start.CanExecute = false;
+            cancelSource = new();
+            Cancel.CanExecute = true;
             try
             {
                 Properties.Settings.Default.AudioOnly = AudioOnly;
@@ -95,7 +102,7 @@ namespace YouTubeDownloadTool
                     DownloadUrl,
                     DestinationFolder,
                     AudioOnly,
-                    CancellationToken.None,
+                    cancelSource.Token,
                     new Progress<double?>(value => ProgressFraction = value),
                     new Progress<string?>(value => Status = value));
 
@@ -109,9 +116,12 @@ namespace YouTubeDownloadTool
             }
             finally
             {
+                Status = null;
                 IsEditable = true;
                 IsProgressBarVisible = false;
                 Start.CanExecute = true;
+                Cancel.CanExecute = false;
+                cancelSource = null;
             }
         }
     }

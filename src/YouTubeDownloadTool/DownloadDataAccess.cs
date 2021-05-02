@@ -89,7 +89,7 @@ namespace YouTubeDownloadTool
                 youTubeDLLease.FilePath,
                 ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!);
 
-            return await youTubeDL.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, progress, status).ConfigureAwait(false);
+            return await youTubeDL.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, cancellationToken, progress, status).ConfigureAwait(false);
         }
     }
 }
