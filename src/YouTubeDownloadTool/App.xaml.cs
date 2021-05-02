@@ -20,7 +20,7 @@ namespace YouTubeDownloadTool
 
             window.DataContext = new MainViewModel(
                 dataAccess,
-                ViewUtils.CreateErrorMessageHandler(window));
+                ViewUtils.CreateNotificationHandler(window));
 
             window.Closed += (sender, args) => dataAccess.Dispose();
             window.Show();

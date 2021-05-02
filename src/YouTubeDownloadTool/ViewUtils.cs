@@ -6,17 +6,19 @@ namespace YouTubeDownloadTool
 {
     internal static class ViewUtils
     {
-        public static Action<string> CreateErrorMessageHandler(Window owner)
+        public static Action<(string Message, bool IsError)> CreateNotificationHandler(Window owner)
         {
-            return errorMessage =>
+            return args =>
             {
                 System.Windows.Forms.TaskDialog.ShowDialog(
                     new WindowInteropHelper(owner).Handle,
                     new()
                     {
                         Caption = owner.Title,
-                        Text = errorMessage,
-                        Icon = System.Windows.Forms.TaskDialogIcon.Error,
+                        Text = args.Message,
+                        Icon = args.IsError
+                            ? System.Windows.Forms.TaskDialogIcon.Error
+                            : System.Windows.Forms.TaskDialogIcon.Information,
                     });
             };
         }

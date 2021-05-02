@@ -10,7 +10,7 @@ namespace YouTubeDownloadTool
     public sealed class MainViewModel : ViewModel
     {
         private readonly IDownloadDataAccess dataAccess;
-        private readonly Action<string> showError;
+        private readonly Action<(string Message, bool IsError)> showNotification;
 
         private string? downloadUrl;
         public string? DownloadUrl { get => downloadUrl; set => Set(ref downloadUrl, value); }
@@ -32,10 +32,10 @@ namespace YouTubeDownloadTool
 
         public Command Start { get; }
 
-        public MainViewModel(IDownloadDataAccess dataAccess, Action<string> showError)
+        public MainViewModel(IDownloadDataAccess dataAccess, Action<(string Message, bool IsError)> showNotification)
         {
             this.dataAccess = dataAccess;
-            this.showError = showError;
+            this.showNotification = showNotification;
 
             audioOnly = Properties.Settings.Default.AudioOnly;
 
@@ -55,26 +55,26 @@ namespace YouTubeDownloadTool
             DownloadUrl = DownloadUrl?.Trim();
             if (string.IsNullOrEmpty(DownloadUrl))
             {
-                showError.Invoke("Please provide a source page URL.");
+                showNotification.Invoke(("Please provide a source page URL.", IsError: true));
                 return;
             }
 
             if (!Uri.TryCreate(DownloadUrl, UriKind.Absolute, out _))
             {
-                showError.Invoke("The source page URL was not recognized as a complete URL.");
+                showNotification.Invoke(("The source page URL was not recognized as a complete URL.", IsError: true));
                 return;
             }
 
             DestinationFolder = DestinationFolder?.Trim();
             if (string.IsNullOrEmpty(DestinationFolder))
             {
-                showError.Invoke("Please choose a destination folder.");
+                showNotification.Invoke(("Please choose a destination folder.", IsError: true));
                 return;
             }
 
             if (!Directory.Exists(DestinationFolder))
             {
-                showError.Invoke("The chosen destination folder could not be accessed.");
+                showNotification.Invoke(("The chosen destination folder could not be accessed.", IsError: true));
                 return;
             }
 
@@ -95,10 +95,11 @@ namespace YouTubeDownloadTool
                     CancellationToken.None,
                     new Progress<double?>(value => ProgressFraction = value));
 
-                if (result.IsError(out var message, exitCode: out _))
-                    showError.Invoke(message);
-                else
+                if (result.IsSuccess)
                     DownloadUrl = null;
+
+                if (result.Message is not null)
+                    showNotification.Invoke((result.Message, IsError: !result.IsSuccess));
             }
             finally
             {

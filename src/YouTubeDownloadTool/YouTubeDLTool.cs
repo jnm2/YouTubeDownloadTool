@@ -65,6 +65,7 @@ namespace YouTubeDownloadTool
             var downloadNumber = 0;
             var progressRangeStart = 0.0;
             var progressRangeLength = 0.95;
+            var alreadyDownloadedMessage = (string?)null;
 
             process.OutputDataReceived += (sender, e) =>
             {
@@ -79,13 +80,21 @@ namespace YouTubeDownloadTool
                         var downloadPercent = double.Parse(match.Groups["percent"].Value, NumberStyles.Number, CultureInfo.CurrentCulture);
                         progress?.Report(progressRangeStart + (downloadPercent * 0.01 * progressRangeLength));
                     }
-                    else if (downloadInfo.StartsWith("Destination:", StringComparison.OrdinalIgnoreCase))
+                    else
                     {
-                        downloadNumber++;
-                        if (downloadNumber > 1)
+                        if (downloadInfo.StartsWith("Destination:", StringComparison.OrdinalIgnoreCase))
                         {
-                            progressRangeStart += progressRangeLength;
-                            progressRangeLength = (1 - progressRangeStart) / 2;
+                            downloadNumber++;
+                            if (downloadNumber > 1)
+                            {
+                                progressRangeStart += progressRangeLength;
+                                progressRangeLength = (1 - progressRangeStart) / 2;
+                            }
+                        }
+
+                        if (downloadInfo.Contains("has already been downloaded", StringComparison.OrdinalIgnoreCase))
+                        {
+                            alreadyDownloadedMessage = downloadInfo;
                         }
                     }
                 }
@@ -128,7 +137,7 @@ namespace YouTubeDownloadTool
                 return DownloadResult.Error(errorMessage, process.ExitCode);
             }
 
-            return DownloadResult.Success;
+            return DownloadResult.Success(alreadyDownloadedMessage);
         }
     }
 }

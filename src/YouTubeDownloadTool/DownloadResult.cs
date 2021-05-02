@@ -1,71 +1,33 @@
 using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace YouTubeDownloadTool
 {
-    [DebuggerDisplay("{ToString(),nq}")]
-    public readonly struct DownloadResult : IEquatable<DownloadResult>
+    public readonly struct DownloadResult
     {
-        private readonly string? errorMessage;
-        private readonly int exitCode;
+        [MemberNotNullWhen(false, nameof(Message))]
+        public bool IsSuccess { get; }
+        public string? Message { get; }
+        public int ExitCode { get; }
 
-        private DownloadResult(string? errorMessage, int exitCode)
+        private DownloadResult(bool isSuccess, string? message, int exitCode)
         {
-            this.errorMessage = errorMessage;
-            this.exitCode = exitCode;
+            IsSuccess = isSuccess;
+            Message = message;
+            ExitCode = exitCode;
         }
 
-        public static DownloadResult Success { get; }
+        public static DownloadResult Success(string? message)
+        {
+            return new DownloadResult(isSuccess: true, message, exitCode: 0);
+        }
 
         public static DownloadResult Error(string message, int exitCode)
         {
             if (string.IsNullOrWhiteSpace(message))
                 throw new ArgumentException("Error message must be specified.", nameof(message));
 
-            return new DownloadResult(message, exitCode);
-        }
-
-        public bool IsSuccess => errorMessage is null;
-
-        public bool IsError([NotNullWhen(true)] out string? message, out int exitCode)
-        {
-            message = errorMessage;
-            exitCode = this.exitCode;
-            return message is { };
-        }
-
-        public override string ToString()
-        {
-            return errorMessage is { }
-                ? $"Error({errorMessage}, exit code {exitCode})"
-                : "Success";
-        }
-
-        public override bool Equals(object? obj)
-        {
-            return obj is DownloadResult result && Equals(result);
-        }
-
-        public bool Equals([AllowNull] DownloadResult other)
-        {
-            return errorMessage == other.errorMessage
-                && exitCode == other.exitCode;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(errorMessage, exitCode);
-        }
-
-        public static bool operator ==(DownloadResult left, DownloadResult right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(DownloadResult left, DownloadResult right)
-        {
-            return !(left == right);
+            return new DownloadResult(isSuccess: false, message, exitCode);
         }
     }
 }
