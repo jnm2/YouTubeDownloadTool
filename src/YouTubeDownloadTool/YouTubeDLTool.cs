@@ -54,14 +54,11 @@ namespace YouTubeDownloadTool
                     WorkingDirectory = destinationDirectory,
                     FileName = executablePath,
                     CreateNoWindow = true,
-                    ArgumentList = { url },
+                    ArgumentList = { url, "--ffmpeg-location", ffmpegDirectory },
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 }
             };
-
-            process.StartInfo.ArgumentList.Add("--ffmpeg-location");
-            process.StartInfo.ArgumentList.Add(ffmpegDirectory);
 
             if (audioOnly) process.StartInfo.ArgumentList.Add("--extract-audio");
 
