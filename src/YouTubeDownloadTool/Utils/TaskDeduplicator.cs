@@ -6,20 +6,18 @@ namespace YouTubeDownloadTool
 {
     internal sealed class TaskDeduplicator<T>
     {
-        private readonly Func<CancellationToken, Task<T>> taskInvoker;
+        private readonly Func<Task<T>> taskInvoker;
         private Task<T>? currentTask;
 
-        public TaskDeduplicator(Func<CancellationToken, Task<T>> taskInvoker)
+        public TaskDeduplicator(Func<Task<T>> taskInvoker)
         {
             this.taskInvoker = taskInvoker ?? throw new ArgumentNullException(nameof(taskInvoker));
         }
 
-        public Task<T> StartOrJoin(CancellationToken cancellationToken)
+        public Task<T> StartOrJoin()
         {
             var lastSeenTask = Volatile.Read(ref currentTask);
             if (lastSeenTask is { IsCompleted: false }) return lastSeenTask;
-
-            cancellationToken.ThrowIfCancellationRequested();
 
             // By using this task instead of the task returned from taskInvoker, it is possible to make sure that racing
             // threads do not invoke overlapping calls to taskInvoker which is the whole point of this class.
@@ -44,12 +42,10 @@ namespace YouTubeDownloadTool
                 }
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var startedTask = TaskUtils.InvokeWithExceptionsWrapped(() => taskInvoker.Invoke(CancellationToken.None));
+            var startedTask = TaskUtils.InvokeWithExceptionsWrapped(() => taskInvoker.Invoke());
             TaskUtils.MirrorExistingTask(source, startedTask);
 
-            return source.Task.WithCancellation(cancellationToken);
+            return source.Task;
         }
     }
 }

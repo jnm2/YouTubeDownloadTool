@@ -75,12 +75,12 @@ namespace YouTubeDownloadTool
 
         public async Task<ToolLease> LeaseToolAsync(CancellationToken cancellationToken)
         {
-            return (currentSource ?? await resolveDeduplicator.StartOrJoin(cancellationToken)).CreateLease();
+            return (currentSource ?? await resolveDeduplicator.StartOrJoin().WithCancellation(cancellationToken)).CreateLease();
         }
 
         public async Task CheckForUpdatesAsync(CancellationToken cancellationToken)
         {
-            await resolveDeduplicator.StartOrJoin(cancellationToken);
+            await resolveDeduplicator.StartOrJoin().WithCancellation(cancellationToken);
         }
 
         private IEnumerable<(Version Version, string RawVersion, string Directory)> TryGetVersionDirectories()
@@ -104,9 +104,9 @@ namespace YouTubeDownloadTool
             });
         }
 
-        private async Task<LeaseSource> ResolveLatestToolAsync(CancellationToken cancellationToken)
+        private async Task<LeaseSource> ResolveLatestToolAsync()
         {
-            using var download = await getLatestDownloadAsync.Invoke(cancellationToken).ConfigureAwait(false);
+            using var download = await getLatestDownloadAsync.Invoke(CancellationToken.None).ConfigureAwait(false);
 
             if (currentSource is { } && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
                 return currentSource;
@@ -114,7 +114,7 @@ namespace YouTubeDownloadTool
             var fileLock = await Utils.GetOrDownloadFileAsync(
                 Path.Join(cacheDirectory, "v" + download.Version, fileName),
                 download.DownloadAsync,
-                cancellationToken);
+                CancellationToken.None);
 
             var newSource = new LeaseSource(download.Version, fileLock);
             ReplaceCurrentSource(newSource);
