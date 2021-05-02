@@ -30,6 +30,9 @@ namespace YouTubeDownloadTool
         private bool isProgressBarVisible;
         public bool IsProgressBarVisible { get => isProgressBarVisible; set => Set(ref isProgressBarVisible, value); }
 
+        private string? status;
+        public string? Status { get => status; set => Set(ref status, value); }
+
         public Command Start { get; }
 
         public MainViewModel(IDownloadDataAccess dataAccess, Action<(string Message, bool IsError)> showNotification)
@@ -93,7 +96,10 @@ namespace YouTubeDownloadTool
                     DestinationFolder,
                     AudioOnly,
                     CancellationToken.None,
-                    new Progress<double?>(value => ProgressFraction = value));
+                    new Progress<double?>(value => ProgressFraction = value),
+                    new Progress<string?>(value => Status = value));
+
+                Status = null;
 
                 if (result.IsSuccess)
                     DownloadUrl = null;

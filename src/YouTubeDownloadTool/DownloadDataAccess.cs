@@ -62,7 +62,8 @@ namespace YouTubeDownloadTool
             string destinationDirectory,
             bool audioOnly,
             CancellationToken cancellationToken,
-            IProgress<double?>? progress)
+            IProgress<double?>? progress,
+            IProgress<string?>? status)
         {
             using var ffmpegLease = await ffmpegResolver.LeaseToolAsync(CancellationToken.None);
             using var youTubeDLLease = await youTubeDLResolver.LeaseToolAsync(CancellationToken.None);
@@ -71,7 +72,7 @@ namespace YouTubeDownloadTool
                 youTubeDLLease.FilePath,
                 ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!);
 
-            return await youTubeDL.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, progress).ConfigureAwait(false);
+            return await youTubeDL.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, progress, status).ConfigureAwait(false);
         }
     }
 }

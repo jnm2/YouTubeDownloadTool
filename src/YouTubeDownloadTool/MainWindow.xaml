@@ -7,7 +7,7 @@
         d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
         mc:Ignorable="d"
         Title="YouTube download tool" Background="#F1F1F1" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight">
-    <Grid Height="180" Width="480" Margin="24,16">
+    <Grid Height="Auto" Width="480" Margin="24,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -36,6 +36,10 @@
             </Grid>
         </Grid>
         <Grid Grid.Row="1" Margin="0,24,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -45,6 +49,7 @@
                 Value="{Binding ProgressFraction}"
                 IsIndeterminate="{Binding ProgressFraction, Converter={x:Static local:IsNullConverter.Instance}}"
                 Visibility="{Binding IsProgressBarVisible, Converter={x:Static local:BooleanToVisibilityConverter.HiddenWhenFalse}}" />
+            <TextBlock Grid.Row="1" TextWrapping="Wrap" Text="{Binding Status}" />
             <Button
                 Grid.Column="1"
                 Style="{StaticResource DefaultButton}"

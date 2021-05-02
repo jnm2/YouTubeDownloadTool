@@ -29,7 +29,12 @@ namespace YouTubeDownloadTool
             this.ffmpegDirectory = ffmpegDirectory;
         }
 
-        public async Task<DownloadResult> DownloadToDirectoryAsync(string url, string destinationDirectory, bool audioOnly = false, IProgress<double?>? progress = null)
+        public async Task<DownloadResult> DownloadToDirectoryAsync(
+            string url,
+            string destinationDirectory,
+            bool audioOnly = false,
+            IProgress<double?>? progress = null,
+            IProgress<string?>? status = null)
         {
             if (string.IsNullOrWhiteSpace(url))
                 throw new ArgumentException("URL must be specified.", nameof(url));
@@ -103,6 +108,7 @@ namespace YouTubeDownloadTool
                     progress?.Report(null);
                 }
 
+                status?.Report(e.Data);
                 output.Add((IsError: false, e.Data));
             };
 
@@ -117,6 +123,7 @@ namespace YouTubeDownloadTool
                     progressRangeLength = 0.90;
                 }
 
+                status?.Report(e.Data);
                 output.Add((IsError: true, e.Data));
             };
 
