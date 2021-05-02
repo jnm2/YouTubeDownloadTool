@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms.VisualStyles;
 
 namespace YouTubeDownloadTool
 {
@@ -65,8 +66,24 @@ namespace YouTubeDownloadTool
             IProgress<double?>? progress,
             IProgress<string?>? status)
         {
-            using var ffmpegLease = await ffmpegResolver.LeaseToolAsync(cancellationToken);
-            using var youTubeDLLease = await youTubeDLResolver.LeaseToolAsync(cancellationToken);
+            var ffmpegResolution = ffmpegResolver.LeaseToolAsync(cancellationToken);
+            var youTubeDlResolution = youTubeDLResolver.LeaseToolAsync(cancellationToken);
+
+            var downloadingTools = (ffmpegResolution.IsCompleted, youTubeDlResolution.IsCompleted) switch
+            {
+                (false, false) => "ffmpeg and youtube-dl",
+                (false, _) => "ffmpeg",
+                (_, false) => "youtube-dl",
+                _ => null,
+            };
+
+            if (downloadingTools is not null)
+                status?.Report($"Downloading {downloadingTools}...");
+
+            using var ffmpegLease = await ffmpegResolution;
+            using var youTubeDLLease = await youTubeDlResolution;
+
+            status?.Report(null);
 
             var youTubeDL = new YouTubeDLTool(
                 youTubeDLLease.FilePath,
