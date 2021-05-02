@@ -29,3 +29,9 @@ dotnet_diagnostic.WPF0041.severity = none
 
 # INPC001: The class has mutable properties and should implement INotifyPropertyChanged.
 dotnet_diagnostic.INPC001.severity = silent
+
+# WPF0071: Add ValueConversion attribute.
+dotnet_diagnostic.WPF0071.severity = silent
+
+# WPF0073: Add ValueConversion attribute (unknown types).
+dotnet_diagnostic.WPF0073.severity = silent
