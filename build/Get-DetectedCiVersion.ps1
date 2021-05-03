@@ -23,6 +23,12 @@ function Get-VersionPrefixFromTags {
     if ($previousTags.Count -gt 0) {
         # Head is not tagged, so it would be greater than the most recent tagged version.
         $previousVersion = Get-VersionPrefix $previousTags[0]
+
+        if ($previousTags[0].Contains('-')) {
+            # This was a prerelease; we're still building for this version prefix.
+            return $previousVersion
+        }
+
         return [version]::new($previousVersion.Major, $previousVersion.Minor, $previousVersion.Build + 1)
     }
 
