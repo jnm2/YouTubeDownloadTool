@@ -21,8 +21,7 @@ $dotnetArgs = @(
     '/p:RepositoryCommit=' + $versionInfo.CommitHash
     '/p:Version=' + $versionInfo.ProductVersion
     '/p:FileVersion=' + $versionInfo.FileVersion
-    # Disabled as workaround for https://github.com/dotnet/wpf/issues/4467
-    # '/p:ContinuousIntegrationBuild=' + ($env:CI -or $env:TF_BUILD)
+    '/p:ContinuousIntegrationBuild=' + ($env:CI -or $env:TF_BUILD)
 )
 
 # Build
