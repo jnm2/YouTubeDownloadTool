@@ -2,22 +2,20 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net5.0-windows</TargetFramework>
+    <TargetFramework>net6.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <EmbedAllSources>true</EmbedAllSources>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win10-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
+    <SelfContained>false</SelfContained>
+    <RollForward>Major</RollForward>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 
     <TreatWarningsAsErrors Condition="'$(Configuration)' != 'Debug'">true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-
-    <!-- Required for ContinuousIntegrationBuild until .NET 6 -->
-    <IncludePackageReferencesDuringMarkupCompilation>true</IncludePackageReferencesDuringMarkupCompilation>
   </PropertyGroup>
 
   <!-- Workaround for https://github.com/dotnet/roslyn/issues/41640 -->
@@ -27,11 +25,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Product>YouTube download tool</Product>
     <AssemblyTitle>YouTube download tool</AssemblyTitle>
     <Company>Joseph Musser</Company>
-    <Copyright>Copyright © 2019–2021 Joseph Musser</Copyright>
+    <Copyright>Copyright © 2019–2022 Joseph Musser</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -43,16 +41,6 @@
   <ItemGroup>
     <None Update="Properties\Settings.settings" Generator="SettingsSingleFileGenerator" LastGenOutput="Settings.Designer.cs" />
     <Compile Update="Properties\Settings.Designer.cs" DesignTimeSharedInput="True" AutoGen="True" DependentUpon="Settings.settings" />
-  </ItemGroup>
-
-  <!-- ⚠ Trimming WPF applications is not officially supported. https://github.com/dotnet/wpf/issues/3811 -->
-  <PropertyGroup>
-    <PublishTrimmed>true</PublishTrimmed>
-  </PropertyGroup>
-  <ItemGroup>
-    <TrimmerRootAssembly Include="System.Diagnostics.Debug" />
-    <TrimmerRootAssembly Include="System.Runtime" />
-    <TrimmerRootAssembly Include="System.Runtime.Extensions" />
   </ItemGroup>
 
 </Project>
