@@ -24,6 +24,11 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
+  <!-- Workaround for https://github.com/dotnet/winforms/issues/7432 -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
   <PropertyGroup>
     <Version>1.0.1</Version>
     <Product>YouTube download tool</Product>
