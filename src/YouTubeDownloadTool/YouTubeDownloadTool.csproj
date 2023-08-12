@@ -34,13 +34,13 @@
     <Product>YouTube download tool</Product>
     <AssemblyTitle>YouTube download tool</AssemblyTitle>
     <Company>Joseph Musser</Company>
-    <Copyright>Copyright © 2019–2022 Joseph Musser</Copyright>
+    <Copyright>Copyright © 2019–2023 Joseph Musser</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="AmbientTasks" Version="1.0.1" />
-    <PackageReference Include="PropertyChangedAnalyzers" Version="3.2.2" PrivateAssets="all" />
-    <PackageReference Include="WpfAnalyzers" Version="3.5.4" PrivateAssets="all" />
+    <PackageReference Include="PropertyChangedAnalyzers" Version="4.0.0" PrivateAssets="all" />
+    <PackageReference Include="WpfAnalyzers" Version="4.1.1" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
