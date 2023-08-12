@@ -24,7 +24,7 @@
             </Grid.RowDefinitions>
             <Label Target="{Binding ElementName=UrlTextBox}" Content="_Source page URL" />
             <TextBox Grid.Row="1" Name="UrlTextBox" Text="{Binding DownloadUrl}" Margin="0,0,0,12" />
-            <CheckBox Grid.Row="2" IsChecked="{Binding AudioOnly}" Margin="0,0,0,12" Content="_Audio only" />
+            <CheckBox Grid.Row="2" IsChecked="{Binding AudioOnly}" Margin="0,0,0,12" Content="_Audio only" HorizontalAlignment="Left" />
             <Label Grid.Row="3" Target="{Binding ElementName=DestinationTextBox}" Content="_Destination folder" />
             <Grid Grid.Row="4">
                 <Grid.ColumnDefinitions>
