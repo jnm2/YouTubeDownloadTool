@@ -108,7 +108,7 @@ public sealed partial class ToolResolver : IDisposable
     {
         using var download = await getLatestDownloadAsync.Invoke(CancellationToken.None).ConfigureAwait(false);
 
-        if (currentSource is { } && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
+        if (currentSource is not null && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
             return currentSource;
 
         var fileLock = await Utils.GetOrDownloadFileAsync(

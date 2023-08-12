@@ -76,7 +76,7 @@ public static class DownloadResolvers
 
             var version = document.RootElement.GetProperty("tag_name").GetString()!;
 
-            if (assetName is { })
+            if (assetName is not null)
             {
                 foreach (var asset in document.RootElement.GetProperty("assets").EnumerateArray())
                 {

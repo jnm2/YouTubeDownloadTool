@@ -31,7 +31,7 @@ internal sealed class TaskDeduplicator<T>
             lastSeenTask = Interlocked.CompareExchange(ref currentTask, source.Task, taskToReplace);
             if (lastSeenTask == taskToReplace) break;
 
-            if (lastSeenTask is { })
+            if (lastSeenTask is not null)
             {
                 // Return even if the new task is complete because it’s so close to having both just started and
                 // just finished that it’s just as good. There’s no way to avoid returning a task that was not

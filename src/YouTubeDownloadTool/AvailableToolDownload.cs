@@ -35,7 +35,7 @@ public sealed class AvailableToolDownload : IDisposable
 
         var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
-        return streamTransform is { }
+        return streamTransform is not null
             ? streamTransform.Invoke(stream)
             : stream;
     }
