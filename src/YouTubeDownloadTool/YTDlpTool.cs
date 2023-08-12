@@ -131,7 +131,7 @@ namespace YouTubeDownloadTool
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            using (cancellationToken.Register(process.Kill))
+            await using (cancellationToken.Register(process.Kill))
                 await process.WaitForExitAsync(CancellationToken.None);
 
             cancellationToken.ThrowIfCancellationRequested();

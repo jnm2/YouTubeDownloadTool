@@ -23,7 +23,7 @@ namespace YouTubeDownloadTool
 
                 using var tempFile = new TempFile();
 
-                using (var file = tempFile.OpenStream())
+                await using (var file = tempFile.OpenStream())
                     await stream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
 
                 do
