@@ -126,7 +126,19 @@ public sealed class YTDlpTool
         process.BeginOutputReadLine();
         process.BeginErrorReadLine();
 
-        await using (cancellationToken.Register(process.Kill))
+        void Cancel()
+        {
+            var processName = process.ProcessName; // This can't be accessed after Process.Kill
+
+            // Prevent from starting any future child processes
+            process.Kill();
+
+            // Unlike youtube-dl, yt-dlp starts a child process with the same name (yt-dlp). Once it's done this,
+            // killing the process we started doesn't cancel anything.
+            Utils.TryKillImmediateChildrenWithProcessName(parentProcess: process, childProcessName: processName);
+        }
+
+        await using (cancellationToken.Register(Cancel))
             await process.WaitForExitAsync(CancellationToken.None);
 
         cancellationToken.ThrowIfCancellationRequested();
