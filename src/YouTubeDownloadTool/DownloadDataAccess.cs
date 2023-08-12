@@ -9,18 +9,18 @@ namespace YouTubeDownloadTool
 {
     public sealed class DownloadDataAccess : IDownloadDataAccess
     {
-        private readonly ToolResolver youTubeDLResolver;
+        private readonly ToolResolver ytDlpResolver;
         private readonly ToolResolver ffmpegResolver;
 
         public DownloadDataAccess(string toolCachePath, string userAgent)
         {
-            youTubeDLResolver = new ToolResolver(
-                cacheDirectory: Path.Join(toolCachePath, "youtube-dl"),
-                fileName: "youtube-dl.exe",
+            ytDlpResolver = new ToolResolver(
+                cacheDirectory: Path.Join(toolCachePath, "yt-dlp"),
+                fileName: "yt-dlp.exe",
                 DownloadResolvers.GitHubReleaseAsset(
-                    owner: "ytdl-org",
-                    repo: "youtube-dl",
-                    assetName: "youtube-dl.exe",
+                    owner: "yt-dlp",
+                    repo: "yt-dlp",
+                    assetName: "yt-dlp.exe",
                     userAgent));
 
             ffmpegResolver = new ToolResolver(
@@ -43,17 +43,17 @@ namespace YouTubeDownloadTool
 
         public void Dispose()
         {
-            youTubeDLResolver.Dispose();
+            ytDlpResolver.Dispose();
             ffmpegResolver.Dispose();
         }
 
         public async Task CheckForToolUpdatesAsync(CancellationToken cancellationToken)
         {
-            youTubeDLResolver.PurgeOldVersions();
+            ytDlpResolver.PurgeOldVersions();
             ffmpegResolver.PurgeOldVersions();
 
             await Task.WhenAll(
-                youTubeDLResolver.CheckForUpdatesAsync(cancellationToken),
+                ytDlpResolver.CheckForUpdatesAsync(cancellationToken),
                 ffmpegResolver.CheckForUpdatesAsync(cancellationToken)).ConfigureAwait(false);
         }
 
@@ -66,13 +66,13 @@ namespace YouTubeDownloadTool
             IProgress<string?>? status)
         {
             var ffmpegResolution = ffmpegResolver.LeaseToolAsync(cancellationToken);
-            var youTubeDlResolution = youTubeDLResolver.LeaseToolAsync(cancellationToken);
+            var ytDlpResolution = ytDlpResolver.LeaseToolAsync(cancellationToken);
 
-            var downloadingTools = (ffmpegResolution.IsCompleted, youTubeDlResolution.IsCompleted) switch
+            var downloadingTools = (ffmpegResolution.IsCompleted, ytDlpResolution.IsCompleted) switch
             {
-                (false, false) => "ffmpeg and youtube-dl",
+                (false, false) => "ffmpeg and yt-dlp",
                 (false, _) => "ffmpeg",
-                (_, false) => "youtube-dl",
+                (_, false) => "yt-dlp",
                 _ => null,
             };
 
@@ -80,15 +80,15 @@ namespace YouTubeDownloadTool
                 status?.Report($"Downloading {downloadingTools}...");
 
             using var ffmpegLease = await ffmpegResolution;
-            using var youTubeDLLease = await youTubeDlResolution;
+            using var ytDlpLease = await ytDlpResolution;
 
             status?.Report(null);
 
-            var youTubeDL = new YouTubeDLTool(
-                youTubeDLLease.FilePath,
+            var ytDlp = new YTDlpTool(
+                ytDlpLease.FilePath,
                 ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!);
 
-            return await youTubeDL.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, cancellationToken, progress, status).ConfigureAwait(false);
+            return await ytDlp.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, cancellationToken, progress, status).ConfigureAwait(false);
         }
     }
 }

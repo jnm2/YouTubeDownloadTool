@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 
 namespace YouTubeDownloadTool
 {
-    public sealed class YouTubeDLTool
+    public sealed class YTDlpTool
     {
         private readonly string executablePath;
         private readonly string ffmpegDirectory;
 
-        public YouTubeDLTool(string executablePath, string ffmpegDirectory)
+        public YTDlpTool(string executablePath, string ffmpegDirectory)
         {
             if (executablePath is null || !Path.IsPathFullyQualified(executablePath))
                 throw new ArgumentException("Executable path must be fully qualified.", nameof(executablePath));
