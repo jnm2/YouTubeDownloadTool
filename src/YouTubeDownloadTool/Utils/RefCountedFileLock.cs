@@ -20,7 +20,7 @@ internal sealed class RefCountedFileLock
         {
             return new RefCountedFileLock(new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read));
         }
-        catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
         {
             return null;
         }
