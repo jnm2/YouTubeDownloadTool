@@ -5,12 +5,12 @@ namespace YouTubeDownloadTool;
 internal sealed class RefCountedFileLock
 {
     private readonly FileStream stream;
-    private readonly RefCounter referenceCounter;
+    private readonly RefCountingDisposer referenceCounter;
 
     private RefCountedFileLock(FileStream stream)
     {
         this.stream = stream;
-        referenceCounter = new RefCounter(stream.Dispose);
+        referenceCounter = new RefCountingDisposer(stream);
     }
 
     public static RefCountedFileLock? CreateIfExists(string filePath)
@@ -27,7 +27,7 @@ internal sealed class RefCountedFileLock
 
     public IDisposable Lease() => referenceCounter.Lease();
 
-    public string FilePath => referenceCounter.IsDisposed
+    public string FilePath => referenceCounter.IsClosed
         ? throw new ObjectDisposedException(nameof(RefCountedFileLock))
         : stream.Name;
 }
