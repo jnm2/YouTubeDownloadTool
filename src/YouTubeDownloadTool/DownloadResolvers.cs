@@ -7,89 +7,88 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace YouTubeDownloadTool
+namespace YouTubeDownloadTool;
+
+public static class DownloadResolvers
 {
-    public static class DownloadResolvers
+    public static Func<CancellationToken, Task<AvailableToolDownload>> GitHubReleaseAsset(
+        string owner,
+        string repo,
+        string assetName,
+        string userAgent,
+        Func<string, Func<Stream, Stream>?>? getStreamTransformForVersion = null)
     {
-        public static Func<CancellationToken, Task<AvailableToolDownload>> GitHubReleaseAsset(
-            string owner,
-            string repo,
-            string assetName,
-            string userAgent,
-            Func<string, Func<Stream, Stream>?>? getStreamTransformForVersion = null)
+        if (string.IsNullOrWhiteSpace(owner))
+            throw new ArgumentException("Owner must be specified.", nameof(owner));
+
+        if (string.IsNullOrWhiteSpace(repo))
+            throw new ArgumentException("Repository must be specified.", nameof(repo));
+
+        if (string.IsNullOrWhiteSpace(assetName))
+            throw new ArgumentException("Asset name must be specified.", nameof(assetName));
+
+        if (string.IsNullOrWhiteSpace(userAgent))
+            throw new ArgumentException("User agent must be specified.", nameof(userAgent));
+
+        return async cancellationToken =>
         {
-            if (string.IsNullOrWhiteSpace(owner))
-                throw new ArgumentException("Owner must be specified.", nameof(owner));
+            using var client = OwnershipTracker.Create(
+                new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
+                {
+                    BaseAddress = new Uri("https://api.github.com"),
+                    DefaultRequestHeaders = { { "User-Agent", userAgent } }
+                });
 
-            if (string.IsNullOrWhiteSpace(repo))
-                throw new ArgumentException("Repository must be specified.", nameof(repo));
+            var (version, downloadUrl) = await GetLatestGitHubReleaseAssetAsync(client.OwnedInstance, owner, repo, assetName, cancellationToken);
 
-            if (string.IsNullOrWhiteSpace(assetName))
-                throw new ArgumentException("Asset name must be specified.", nameof(assetName));
+            if (downloadUrl is null)
+                throw new NotImplementedException($"Unable to find {assetName} in latest GitHub release.");
 
-            if (string.IsNullOrWhiteSpace(userAgent))
-                throw new ArgumentException("User agent must be specified.", nameof(userAgent));
+            var streamTransform = getStreamTransformForVersion?.Invoke(version);
 
-            return async cancellationToken =>
-            {
-                using var client = OwnershipTracker.Create(
-                    new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
-                    {
-                        BaseAddress = new Uri("https://api.github.com"),
-                        DefaultRequestHeaders = { { "User-Agent", userAgent } }
-                    });
+            return new AvailableToolDownload(version, client.ReleaseOwnership(), downloadUrl, streamTransform);
+        };
+    }
 
-                var (version, downloadUrl) = await GetLatestGitHubReleaseAssetAsync(client.OwnedInstance, owner, repo, assetName, cancellationToken);
-
-                if (downloadUrl is null)
-                    throw new NotImplementedException($"Unable to find {assetName} in latest GitHub release.");
-
-                var streamTransform = getStreamTransformForVersion?.Invoke(version);
-
-                return new AvailableToolDownload(version, client.ReleaseOwnership(), downloadUrl, streamTransform);
-            };
-        }
-
-        private static async Task<(string version, string? downloadUrl)> GetLatestGitHubReleaseAssetAsync(HttpClient client, string owner, string repo, string? assetName, CancellationToken cancellationToken)
+    private static async Task<(string version, string? downloadUrl)> GetLatestGitHubReleaseAssetAsync(HttpClient client, string owner, string repo, string? assetName, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage
         {
-            using var request = new HttpRequestMessage
+            RequestUri = new Uri($"/repos/{owner}/{repo}/releases/latest", UriKind.Relative),
+            Headers =
             {
-                RequestUri = new Uri($"/repos/{owner}/{repo}/releases/latest", UriKind.Relative),
-                Headers =
-                {
-                    Accept = { new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json") }
-                }
-            };
+                Accept = { new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json") }
+            }
+        };
 
-            using var response = await client.SendAsync(
-               request,
-               HttpCompletionOption.ResponseHeadersRead,
-               cancellationToken).ConfigureAwait(false);
+        using var response = await client.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken).ConfigureAwait(false);
 
-            response.EnsureSuccessStatusCode();
+        response.EnsureSuccessStatusCode();
 
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
-            await using (stream.ConfigureAwait(false))
+        await using (stream.ConfigureAwait(false))
+        {
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            var version = document.RootElement.GetProperty("tag_name").GetString()!;
+
+            if (assetName is { })
             {
-                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                var version = document.RootElement.GetProperty("tag_name").GetString()!;
-
-                if (assetName is { })
+                foreach (var asset in document.RootElement.GetProperty("assets").EnumerateArray())
                 {
-                    foreach (var asset in document.RootElement.GetProperty("assets").EnumerateArray())
+                    if (assetName.Equals(asset.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase))
                     {
-                        if (assetName.Equals(asset.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase))
-                        {
-                            var downloadUrl = asset.GetProperty("browser_download_url").GetString()!;
-                            return (version, downloadUrl);
-                        }
+                        var downloadUrl = asset.GetProperty("browser_download_url").GetString()!;
+                        return (version, downloadUrl);
                     }
                 }
-
-                return (version, null);
             }
+
+            return (version, null);
         }
     }
 }

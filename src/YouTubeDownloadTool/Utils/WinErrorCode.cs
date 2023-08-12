@@ -1,7 +1,6 @@
-namespace YouTubeDownloadTool
+namespace YouTubeDownloadTool;
+
+internal enum WinErrorCode : ushort
 {
-    internal enum WinErrorCode : ushort
-    {
-        AlreadyExists = 0xB7
-    }
+    AlreadyExists = 0xB7
 }
