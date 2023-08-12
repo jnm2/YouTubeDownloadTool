@@ -1,5 +1,3 @@
-using System;
-
 namespace YouTubeDownloadTool;
 
 partial class ToolResolver
