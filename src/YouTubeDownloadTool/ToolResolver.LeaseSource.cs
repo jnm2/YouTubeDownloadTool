@@ -6,11 +6,9 @@ partial class ToolResolver
     {
         public LeaseSource(string version, RefCountedFileLock fileLock)
         {
-            using var lease = OwnershipTracker.Create(fileLock.Lease());
-
             Version = version;
             FileLock = fileLock;
-            Lease = lease.ReleaseOwnership();
+            Lease = fileLock.Lease();
         }
 
         public string Version { get; }
