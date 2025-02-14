@@ -4,7 +4,6 @@ namespace YouTubeDownloadTool;
 
 public sealed class ToolLease : IDisposable
 {
-    private readonly string filePath;
     private IDisposable? lease;
 
     public ToolLease(string version, string filePath, IDisposable lease)
@@ -16,7 +15,7 @@ public sealed class ToolLease : IDisposable
             throw new ArgumentException("File path must be fully qualified.", nameof(filePath));
 
         Version = version;
-        this.filePath = filePath;
+        FilePath = filePath;
         this.lease = lease ?? throw new ArgumentNullException(nameof(lease));
     }
 
@@ -24,7 +23,7 @@ public sealed class ToolLease : IDisposable
 
     public string FilePath => Volatile.Read(ref lease) is null
         ? throw new ObjectDisposedException(nameof(ToolLease))
-        : filePath;
+        : field;
 
     public void Dispose()
     {

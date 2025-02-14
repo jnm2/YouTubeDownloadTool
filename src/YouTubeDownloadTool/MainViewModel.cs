@@ -11,26 +11,19 @@ public sealed class MainViewModel : ObservableObject
     private readonly IDownloadDataAccess dataAccess;
     private readonly Action<(string Message, bool IsError)> showNotification;
 
-    private string? downloadUrl;
-    public string? DownloadUrl { get => downloadUrl; set => Set(ref downloadUrl, value); }
+    public string? DownloadUrl { get; set => Set(ref field, value); }
 
-    private bool audioOnly;
-    public bool AudioOnly { get => audioOnly; set => Set(ref audioOnly, value); }
+    public bool AudioOnly { get; set => Set(ref field, value); }
 
-    private string? destinationFolder;
-    public string? DestinationFolder { get => destinationFolder; set => Set(ref destinationFolder, value); }
+    public string? DestinationFolder { get; set => Set(ref field, value); }
 
-    private double? progressFraction;
-    public double? ProgressFraction { get => progressFraction; set => Set(ref progressFraction, value); }
+    public double? ProgressFraction { get; set => Set(ref field, value); }
 
-    private bool isEditable = true;
-    public bool IsEditable { get => isEditable; set => Set(ref isEditable, value); }
+    public bool IsEditable { get; set => Set(ref field, value); } = true;
 
-    private bool isProgressBarVisible;
-    public bool IsProgressBarVisible { get => isProgressBarVisible; set => Set(ref isProgressBarVisible, value); }
+    public bool IsProgressBarVisible { get; set => Set(ref field, value); }
 
-    private string? status;
-    public string? Status { get => status; set => Set(ref status, value); }
+    public string? Status { get; set => Set(ref field, value); }
 
     public Command Start { get; }
 
@@ -41,9 +34,9 @@ public sealed class MainViewModel : ObservableObject
         this.dataAccess = dataAccess;
         this.showNotification = showNotification;
 
-        audioOnly = Properties.Settings.Default.AudioOnly;
+        AudioOnly = Properties.Settings.Default.AudioOnly;
 
-        destinationFolder = Directory.Exists(Properties.Settings.Default.DestinationFolder)
+        DestinationFolder = Directory.Exists(Properties.Settings.Default.DestinationFolder)
             ? Properties.Settings.Default.DestinationFolder
             : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
 

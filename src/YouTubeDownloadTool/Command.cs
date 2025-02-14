@@ -6,7 +6,6 @@ namespace YouTubeDownloadTool;
 public sealed class Command : ICommand
 {
     private readonly Action action;
-    private bool canExecute = true;
 
     public Command(Action action)
     {
@@ -20,18 +19,18 @@ public sealed class Command : ICommand
 
     public bool CanExecute
     {
-        get => canExecute;
+        get;
         set
         {
-            if (canExecute == value) return;
-            canExecute = value;
+            if (field == value) return;
+            field = value;
             CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
-    }
+    } = true;
 
     public event EventHandler? CanExecuteChanged;
 
-    bool ICommand.CanExecute(object? parameter) => canExecute;
+    bool ICommand.CanExecute(object? parameter) => CanExecute;
 
     void ICommand.Execute(object? parameter) => action.Invoke();
 }
