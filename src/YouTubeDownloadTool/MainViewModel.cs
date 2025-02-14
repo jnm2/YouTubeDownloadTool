@@ -4,7 +4,7 @@ using Techsola;
 
 namespace YouTubeDownloadTool;
 
-public sealed class MainViewModel : ViewModel
+public sealed class MainViewModel : ObservableObject
 {
     private CancellationTokenSource? cancelSource;
 
