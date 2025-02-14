@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EmbedAllSources>true</EmbedAllSources>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <RuntimeIdentifier>win10-x64</RuntimeIdentifier>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
     <RollForward>Major</RollForward>
     <PublishSingleFile>true</PublishSingleFile>
@@ -35,7 +35,7 @@
     <Product>YouTube download tool</Product>
     <AssemblyTitle>YouTube download tool</AssemblyTitle>
     <Company>Joseph Musser</Company>
-    <Copyright>Copyright © 2019–2023 Joseph Musser</Copyright>
+    <Copyright>Copyright © 2019–2025 Joseph Musser</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
