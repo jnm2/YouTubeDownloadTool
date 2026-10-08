@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Windows.Shell;
 using Techsola;
 
 namespace YouTubeDownloadTool;
@@ -22,6 +23,8 @@ public sealed class MainViewModel : ObservableObject
     public bool IsEditable { get; set => Set(ref field, value); } = true;
 
     public bool IsProgressBarVisible { get; set => Set(ref field, value); }
+
+    public TaskbarItemProgressState TaskbarProgressState { get; set => Set(ref field, value); }
 
     public string? Status { get; set => Set(ref field, value); }
 
@@ -79,6 +82,7 @@ public sealed class MainViewModel : ObservableObject
         IsEditable = false;
         ProgressFraction = null;
         IsProgressBarVisible = true;
+        TaskbarProgressState = TaskbarItemProgressState.Indeterminate;
         Start.CanExecute = false;
         cancelSource = new();
         Cancel.CanExecute = true;
@@ -93,7 +97,11 @@ public sealed class MainViewModel : ObservableObject
                 DestinationFolder,
                 AudioOnly,
                 cancelSource.Token,
-                new Progress<double?>(value => ProgressFraction = value),
+                new Progress<double?>(value =>
+                {
+                    ProgressFraction = value;
+                    TaskbarProgressState = value is null ? TaskbarItemProgressState.Indeterminate : TaskbarItemProgressState.Normal;
+                }),
                 new Progress<string?>(value => Status = value));
 
             Status = null;
@@ -109,6 +117,7 @@ public sealed class MainViewModel : ObservableObject
             Status = null;
             IsEditable = true;
             IsProgressBarVisible = false;
+            TaskbarProgressState = TaskbarItemProgressState.None;
             Start.CanExecute = true;
             Cancel.CanExecute = false;
             cancelSource = null;
