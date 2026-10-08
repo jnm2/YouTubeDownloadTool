@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:YouTubeDownloadTool"
         d:DataContext="{d:DesignInstance Type=local:MainViewModel}"
         mc:Ignorable="d"
-        Title="YouTube download tool" Background="#F1F1F1" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight">
+        Title="YouTube download tool" Icon="AppIcon.ico" Background="#F1F1F1" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight">
     <Window.TaskbarItemInfo>
         <TaskbarItemInfo ProgressState="{Binding TaskbarProgressState}" ProgressValue="{Binding ProgressFraction}" />
     </Window.TaskbarItemInfo>
