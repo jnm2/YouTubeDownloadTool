@@ -30,7 +30,7 @@
 
   <!-- Workaround for https://github.com/dotnet/winforms/issues/7432 -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>
