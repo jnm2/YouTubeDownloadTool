@@ -14,7 +14,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0 # Needed in order for tags to be available so prereleases autoincrement the version
 
@@ -23,21 +23,21 @@ jobs:
 
     - name: Upload bin artifact
       if: always()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v7
       with:
         name: Bin
         path: artifacts/Bin/YouTubeDownloadTool.exe
 
     - name: Upload symbols artifact
       if: always()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v7
       with:
         name: Symbols
         path: artifacts/Bin/YouTubeDownloadTool.pdb
 
     - name: Upload logs artifact
       if: always()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v7
       with:
         name: Logs
         path: artifacts/Logs

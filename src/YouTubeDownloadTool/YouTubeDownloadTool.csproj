@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
@@ -34,11 +34,11 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Product>YouTube download tool</Product>
     <AssemblyTitle>YouTube download tool</AssemblyTitle>
     <Company>Joseph Musser</Company>
-    <Copyright>Copyright © 2019–2025 Joseph Musser</Copyright>
+    <Copyright>Copyright © 2019–2026 Joseph Musser</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
