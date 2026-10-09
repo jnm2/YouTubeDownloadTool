@@ -9,6 +9,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, 'out');
 const ICO = path.join(HERE, '..', '..', 'src', 'YouTubeDownloadTool', 'AppIcon.ico');
 const PNG = path.join(HERE, 'sizes.png'); // committed, shown in README.md
+// Committed, shown inline in the repository README.md's h1: the 32 px form, sized so that the tray bottom sits on the
+// text baseline and the top of the arrowhead lines up with the cap height (GitHub h1 is 32px Segoe UI Semibold on
+// Windows, cap height 22.5px; macOS and Linux fonts differ by about 1px).
+const README_SVG = path.join(HERE, '..', 'readme', 'icon.svg');
+const README_FORM = 32, README_CAP_HEIGHT = 22.5;
 
 const programFiles = process.env.ProgramFiles ?? 'C:\\Program Files';
 const findTool = (envVar, candidates, fallback) =>
@@ -143,6 +148,18 @@ for (const G of SIZES) fs.writeFileSync(path.join(OUT, `icon-${G}.svg`), draw(G,
 run(INKSCAPE, [`--actions=${SIZES.map((s) => `file-open:icon-${s}.svg;export-width:${s};export-height:${s};export-filename:icon-${s}.png;export-do;file-close`).join(';')}`]);
 run(MAGICK, [...SIZES.map((s) => `icon-${s}.png`), ICO]);
 
+// Crop the viewBox at the tray bottom (so it lands on the baseline, since images are baseline-aligned) and scale the
+// span from arrowhead top to tray bottom to the cap height.
+{
+  const G = README_FORM, p = PIXEL_TIERS[G] ?? geom(G);
+  const top = Math.min(...p.head.map(([, y]) => y)), bottom = p.tray[3];
+  const scale = README_CAP_HEIGHT / (bottom - top), size = (v) => +(v * scale).toFixed(3);
+  const from = `width="${G}" height="${G}" viewBox="0 0 ${G} ${G}"`;
+  const svg = draw(G, p);
+  if (!svg.includes(from)) throw new Error('Unexpected SVG header');
+  fs.writeFileSync(README_SVG, svg.replace(from, `width="${size(G)}" height="${size(bottom)}" viewBox="0 0 ${G} ${bottom}"`));
+}
+
 // Every size at actual pixel size, side by side on a transparent background, bottom-aligned.
 run(MAGICK, ['-background', 'none', ...SIZES.map((s) => `icon-${s}.png`), '-bordercolor', 'none', '-border', '8', '-gravity', 'south', '+append', '+repage', PNG]);
 
@@ -150,4 +167,4 @@ run(MAGICK, ['-background', 'none', ...SIZES.map((s) => `icon-${s}.png`), '-bord
 run(MAGICK, ['-background', '#F3F3F3', ...SIZES.flatMap((s) => ['(', `icon-${s}.png`, '-filter', s === 256 ? 'Lanczos' : 'point', '-resize', '160x160', ')']),
   '-bordercolor', '#F3F3F3', '-border', '8', '+append', '-alpha', 'remove', 'preview.png']);
 
-console.log(`Wrote ${path.relative(process.cwd(), ICO)} (${SIZES.join(', ')}), ${path.relative(process.cwd(), PNG)} and ${path.relative(process.cwd(), path.join(OUT, 'preview.png'))}`);
+console.log(`Wrote ${path.relative(process.cwd(), ICO)} (${SIZES.join(', ')}), ${path.relative(process.cwd(), PNG)}, ${path.relative(process.cwd(), README_SVG)} and ${path.relative(process.cwd(), path.join(OUT, 'preview.png'))}`);

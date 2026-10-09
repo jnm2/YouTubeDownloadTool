@@ -2,7 +2,7 @@
 
 ![App icon at 16, 20, 24, 32, 48, 64 and 256 px](sizes.png)
 
-`generate.mjs` is the source of the app icon. It writes one SVG per size (16, 20, 24, 32, 48, 64, 256) to `out/`, renders them to PNG, and packs them into [`src/YouTubeDownloadTool/AppIcon.ico`](../../src/YouTubeDownloadTool/AppIcon.ico). Every size is also rendered side by side to `sizes.png` for this README.
+`generate.mjs` is the source of the app icon. It writes one SVG per size (16, 20, 24, 32, 48, 64, 256) to `out/`, renders them to PNG, and packs them into [`src/YouTubeDownloadTool/AppIcon.ico`](../../src/YouTubeDownloadTool/AppIcon.ico). Every size is also rendered side by side to `sizes.png` for this README, and the 32 px form is written to [`assets/readme/icon.svg`](../readme/icon.svg) for the [repository README](../../README.md)'s heading, sized so the tray sits on the text baseline and the top of the arrowhead meets the cap height.
 
 ## Regenerating
 
@@ -12,7 +12,7 @@ Requires [Node.js](https://nodejs.org), [Inkscape](https://inkscape.org) and [Im
 node assets/icon/generate.mjs
 ```
 
-Check `assets/icon/out/preview.png` (every size enlarged), then commit the updated `AppIcon.ico`, `sizes.png` and `generate.mjs`.
+Check `assets/icon/out/preview.png` (every size enlarged), then commit the updated `AppIcon.ico`, `sizes.png`, `assets/readme/icon.svg` and `generate.mjs`.
 
 ## Adjusting
 
