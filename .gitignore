@@ -340,3 +340,6 @@ ASALocalRun/
 healthchecksdb
 # Icon generator intermediate output
 /assets/icon/out/
+
+# Social preview generator output (uploaded to GitHub, not committed)
+/assets/social/out/
