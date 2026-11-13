@@ -6,6 +6,7 @@ public sealed partial class ToolResolver : IDisposable
 {
     // Must not start with "v" so that it can never be mistaken for a version directory.
     private const string StagingDirectoryPrefix = "staging_";
+    private static readonly TimeSpan StaleStagingDirectoryAge = TimeSpan.FromDays(1);
     private const int MaxInstallAttempts = 10;
 
     private readonly string cacheDirectory;
@@ -76,6 +77,13 @@ public sealed partial class ToolResolver : IDisposable
             catch (IOException)
             {
             }
+        }
+
+        // Left behind if the app exits while installing. Recent ones may belong to an installation in progress.
+        foreach (var directory in TryGetDirectories(StagingDirectoryPrefix + "*"))
+        {
+            if (DateTime.UtcNow - Directory.GetCreationTimeUtc(directory) > StaleStagingDirectoryAge)
+                TryDeleteDirectory(directory);
         }
     }
 
