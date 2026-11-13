@@ -5,18 +5,24 @@ namespace YouTubeDownloadTool;
 public sealed partial class ToolResolver : IDisposable
 {
     private readonly string cacheDirectory;
-    private readonly string fileName;
+    private readonly string executableFileName;
     private readonly Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync;
     private readonly TaskDeduplicator<LeaseSource> resolveDeduplicator;
     private LeaseSource? currentSource;
 
+    /// <param name="cacheDirectory">The directory in which a subdirectory is kept for each downloaded version.</param>
+    /// <param name="executableFileName">
+    /// The file within each version directory to lease. While leased, it is held open, which prevents the version
+    /// directory from being purged.
+    /// </param>
+    /// <param name="getLatestDownloadAsync">Gets the latest available version of the tool.</param>
     public ToolResolver(
         string cacheDirectory,
-        string fileName,
+        string executableFileName,
         Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync)
     {
         this.cacheDirectory = cacheDirectory;
-        this.fileName = fileName;
+        this.executableFileName = executableFileName;
         this.getLatestDownloadAsync = getLatestDownloadAsync;
         currentSource = GetCurrentCachedTool();
 
@@ -40,7 +46,7 @@ public sealed partial class ToolResolver : IDisposable
         foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.Version))
         {
             if (info is (_, var rawVersion, { } directory)
-                && RefCountedFileLock.CreateIfExists(Path.Join(directory, fileName)) is { } fileLock)
+                && RefCountedFileLock.CreateIfExists(Path.Join(directory, executableFileName)) is { } fileLock)
             {
                 return new LeaseSource(rawVersion, fileLock);
             }
@@ -59,7 +65,7 @@ public sealed partial class ToolResolver : IDisposable
             {
                 // Try to delete the file first because an instance of this app may be locking it in order to invoke
                 // the same version multiple times.
-                File.Delete(Path.Join(directory, fileName));
+                File.Delete(Path.Join(directory, executableFileName));
                 Directory.Delete(directory, recursive: true);
             }
             catch (IOException)
@@ -107,7 +113,7 @@ public sealed partial class ToolResolver : IDisposable
             return currentSource;
 
         var fileLock = await Utils.GetOrDownloadFileAsync(
-            Path.Join(cacheDirectory, "v" + download.Version, fileName),
+            Path.Join(cacheDirectory, "v" + download.Version, executableFileName),
             download.DownloadAsync,
             CancellationToken.None);
 

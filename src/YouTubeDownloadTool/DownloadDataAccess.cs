@@ -13,7 +13,7 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
     {
         ytDlpResolver = new ToolResolver(
             cacheDirectory: Path.Join(toolCachePath, "yt-dlp"),
-            fileName: "yt-dlp.exe",
+            executableFileName: "yt-dlp.exe",
             DownloadResolvers.GitHubReleaseAsset(
                 owner: "yt-dlp",
                 repo: "yt-dlp",
@@ -22,7 +22,7 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
 
         ffmpegResolver = new ToolResolver(
             cacheDirectory: Path.Join(toolCachePath, "ffmpeg"),
-            fileName: "ffmpeg.exe",
+            executableFileName: "ffmpeg.exe",
             getLatestDownloadAsync: async cancellationToken =>
             {
                 using var client = OwnershipTracker.Create(
