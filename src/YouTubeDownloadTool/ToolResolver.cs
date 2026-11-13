@@ -158,6 +158,13 @@ public sealed partial class ToolResolver : IDisposable
                 {
                     // Another instance of this app may have installed the same version first.
                 }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < MaxInstallAttempts)
+                {
+                    // Moving a directory fails while any file in it is open, for example by an antivirus scan of the
+                    // newly extracted files.
+                    await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
 
                 if (RefCountedFileLock.CreateIfExists(executablePath) is { } fileLock)
                     return fileLock;
