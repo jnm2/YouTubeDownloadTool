@@ -4,6 +4,10 @@ namespace YouTubeDownloadTool;
 
 public sealed partial class ToolResolver : IDisposable
 {
+    // Must not start with "v" so that it can never be mistaken for a version directory.
+    private const string StagingDirectoryPrefix = "staging_";
+    private const int MaxInstallAttempts = 10;
+
     private readonly string cacheDirectory;
     private readonly string executableFileName;
     private readonly Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync;
@@ -63,8 +67,9 @@ public sealed partial class ToolResolver : IDisposable
         {
             try
             {
-                // Try to delete the file first because an instance of this app may be locking it in order to invoke
-                // the same version multiple times.
+                // Try to delete the executable first because an instance of this app may be locking it in order to
+                // invoke the same version multiple times. A version directory is not used without its executable,
+                // so it does not matter if the rest of the directory is only partially deleted.
                 File.Delete(Path.Join(directory, executableFileName));
                 Directory.Delete(directory, recursive: true);
             }
@@ -112,9 +117,9 @@ public sealed partial class ToolResolver : IDisposable
         if (currentSource is not null && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
             return currentSource;
 
-        var fileLock = await GetOrDownloadFileAsync(
-            Path.Join(cacheDirectory, "v" + download.Version, executableFileName),
-            download.DownloadAsync,
+        var fileLock = await GetOrInstallVersionAsync(
+            Path.Join(cacheDirectory, "v" + download.Version),
+            download.InstallAsync,
             CancellationToken.None);
 
         var newSource = new LeaseSource(download.Version, fileLock);
@@ -122,40 +127,63 @@ public sealed partial class ToolResolver : IDisposable
         return newSource;
     }
 
-    private static async Task<RefCountedFileLock> GetOrDownloadFileAsync(string filePath, Func<CancellationToken, Task<Stream>> downloadAsync, CancellationToken cancellationToken)
+    private async Task<RefCountedFileLock> GetOrInstallVersionAsync(
+        string versionDirectory,
+        Func<string, CancellationToken, Task> installAsync,
+        CancellationToken cancellationToken)
     {
-        if (filePath is null || !Path.IsPathFullyQualified(filePath))
-            throw new ArgumentException("The file path must be fully qualified.", nameof(filePath));
+        var executablePath = Path.Join(versionDirectory, executableFileName);
 
-        if (downloadAsync is null) throw new ArgumentNullException(nameof(downloadAsync));
+        if (RefCountedFileLock.CreateIfExists(executablePath) is { } existingLock)
+            return existingLock;
 
-        var fileLock = RefCountedFileLock.CreateIfExists(filePath);
-
-        if (fileLock is null)
+        // Installing into a staging directory and then moving it into place means that a version directory never has
+        // partial contents. Staging inside the cache directory keeps the move on the same volume.
+        var stagingDirectory = Path.Join(cacheDirectory, StagingDirectoryPrefix + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stagingDirectory);
+        try
         {
-            var stream = await downloadAsync.Invoke(cancellationToken).ConfigureAwait(false);
-            await using var _ = stream.ConfigureAwait(false);
+            await installAsync.Invoke(stagingDirectory, cancellationToken).ConfigureAwait(false);
 
-            using var tempFile = new TempFile();
+            if (!File.Exists(Path.Join(stagingDirectory, executableFileName)))
+                throw new InvalidOperationException($"The downloaded tool does not contain {executableFileName}.");
 
-            await using (var file = tempFile.OpenStream())
-                await stream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
-
-            do
+            for (var attempt = 1; ; attempt++)
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
                 try
                 {
-                    File.Move(tempFile.Path, filePath);
+                    Directory.Move(stagingDirectory, versionDirectory);
                 }
                 catch (IOException ex) when (ex.GetErrorCode() == WinErrorCode.AlreadyExists)
                 {
+                    // Another instance of this app may have installed the same version first.
                 }
 
-                fileLock = RefCountedFileLock.CreateIfExists(filePath);
-            } while (fileLock is null);
-        }
+                if (RefCountedFileLock.CreateIfExists(executablePath) is { } fileLock)
+                    return fileLock;
 
-        return fileLock;
+                if (attempt >= MaxInstallAttempts)
+                    throw new IOException($"Unable to install to {versionDirectory}.");
+
+                // The version directory exists without its executable, so it is being deleted or was left behind by
+                // an incomplete purge.
+                TryDeleteDirectory(versionDirectory);
+            }
+        }
+        finally
+        {
+            TryDeleteDirectory(stagingDirectory);
+        }
+    }
+
+    private static void TryDeleteDirectory(string directory)
+    {
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 }

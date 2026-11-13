@@ -18,7 +18,8 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
                 owner: "yt-dlp",
                 repo: "yt-dlp",
                 assetName: "yt-dlp.exe",
-                userAgent));
+                userAgent,
+                ToolInstallers.SaveAs("yt-dlp.exe")));
 
         ffmpegResolver = new ToolResolver(
             cacheDirectory: Path.Join(toolCachePath, "ffmpeg"),
@@ -34,7 +35,7 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
                     version,
                     client.ReleaseOwnership(),
                     downloadUrl: "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
-                    StreamTransforms.UnzipSingleFile($"ffmpeg-{version}-essentials_build/bin/ffmpeg.exe"));
+                    ToolInstallers.UnzipSingleFile($"ffmpeg-{version}-essentials_build/bin/ffmpeg.exe", "ffmpeg.exe"));
             });
     }
 
