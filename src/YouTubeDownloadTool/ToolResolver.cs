@@ -89,19 +89,21 @@ public sealed partial class ToolResolver : IDisposable
         await resolveDeduplicator.StartOrJoin().WithCancellation(cancellationToken);
     }
 
-    private IEnumerable<(Version Version, string RawVersion, string Directory)> TryGetVersionDirectories()
+    private string[] TryGetDirectories(string searchPattern)
     {
-        string[] directories;
         try
         {
-            directories = Directory.GetDirectories(cacheDirectory, "v*");
+            return Directory.GetDirectories(cacheDirectory, searchPattern);
         }
         catch (DirectoryNotFoundException)
         {
-            return Enumerable.Empty<(Version, string, string)>();
+            return [];
         }
+    }
 
-        return directories.SelectWhere(directory =>
+    private IEnumerable<(Version Version, string RawVersion, string Directory)> TryGetVersionDirectories()
+    {
+        return TryGetDirectories("v*").SelectWhere(directory =>
         {
             var rawVersion = Path.GetFileName(directory)[1..];
             return (
