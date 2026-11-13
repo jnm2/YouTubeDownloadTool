@@ -21,7 +21,10 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
                 // unpack itself to a temporary directory each time it starts.
                 assetName: "yt-dlp_win.zip",
                 userAgent,
-                ToolInstallers.Unzip()));
+                ToolInstallers.Unzip()),
+            // Self-extracting yt-dlp.exe installations from older versions of this app have no _internal directory.
+            // (Older versions of this app can still use the newer installations.)
+            isObsoleteInstallation: directory => !Directory.Exists(Path.Join(directory, "_internal")));
 
         ffmpegResolver = new ToolResolver(
             cacheDirectory: Path.Join(toolCachePath, "ffmpeg"),

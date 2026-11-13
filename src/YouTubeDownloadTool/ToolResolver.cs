@@ -11,6 +11,7 @@ public sealed partial class ToolResolver : IDisposable
 
     private readonly string cacheDirectory;
     private readonly string executableFileName;
+    private readonly Func<string, bool>? isObsoleteInstallation;
     private readonly Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync;
     private readonly TaskDeduplicator<LeaseSource> resolveDeduplicator;
     private LeaseSource? currentSource;
@@ -21,14 +22,19 @@ public sealed partial class ToolResolver : IDisposable
     /// directory from being purged.
     /// </param>
     /// <param name="getLatestDownloadAsync">Gets the latest available version of the tool.</param>
+    /// <param name="isObsoleteInstallation">
+    /// Identifies version directories installed in an older format. These are replaced if they are not in use.
+    /// </param>
     public ToolResolver(
         string cacheDirectory,
         string executableFileName,
-        Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync)
+        Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync,
+        Func<string, bool>? isObsoleteInstallation = null)
     {
         this.cacheDirectory = cacheDirectory;
         this.executableFileName = executableFileName;
         this.getLatestDownloadAsync = getLatestDownloadAsync;
+        this.isObsoleteInstallation = isObsoleteInstallation;
         currentSource = GetCurrentCachedTool();
 
         resolveDeduplicator = new TaskDeduplicator<LeaseSource>(ResolveLatestToolAsync);
@@ -51,7 +57,7 @@ public sealed partial class ToolResolver : IDisposable
         foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.Version))
         {
             if (info is (_, var rawVersion, { } directory)
-                && RefCountedFileLock.CreateIfExists(Path.Join(directory, executableFileName)) is { } fileLock)
+                && TryLockInstallation(directory) is { } fileLock)
             {
                 return new LeaseSource(rawVersion, fileLock);
             }
@@ -60,7 +66,19 @@ public sealed partial class ToolResolver : IDisposable
         return null;
     }
 
-    private void TryDeleteVersionDirectory(string versionDirectory)
+    private RefCountedFileLock? TryLockInstallation(string versionDirectory)
+    {
+        if (isObsoleteInstallation?.Invoke(versionDirectory) == true && TryDeleteVersionDirectory(versionDirectory))
+            return null;
+
+        // An obsolete installation that can't be deleted is in use by another instance of this app, so it still works.
+        return RefCountedFileLock.CreateIfExists(Path.Join(versionDirectory, executableFileName));
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> if the version directory no longer contains the executable.
+    /// </summary>
+    private bool TryDeleteVersionDirectory(string versionDirectory)
     {
         try
         {
@@ -71,10 +89,11 @@ public sealed partial class ToolResolver : IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return;
+            return false;
         }
 
         TryDeleteDirectory(versionDirectory);
+        return true;
     }
 
     public void PurgeOldVersions()
@@ -149,9 +168,7 @@ public sealed partial class ToolResolver : IDisposable
         Func<string, CancellationToken, Task> installAsync,
         CancellationToken cancellationToken)
     {
-        var executablePath = Path.Join(versionDirectory, executableFileName);
-
-        if (RefCountedFileLock.CreateIfExists(executablePath) is { } existingLock)
+        if (TryLockInstallation(versionDirectory) is { } existingLock)
             return existingLock;
 
         // Installing into a staging directory and then moving it into place means that a version directory never has
@@ -183,14 +200,14 @@ public sealed partial class ToolResolver : IDisposable
                     continue;
                 }
 
-                if (RefCountedFileLock.CreateIfExists(executablePath) is { } fileLock)
+                if (TryLockInstallation(versionDirectory) is { } fileLock)
                     return fileLock;
 
                 if (attempt >= MaxInstallAttempts)
                     throw new IOException($"Unable to install to {versionDirectory}.");
 
-                // The version directory exists without its executable, so it is being deleted or was left behind by
-                // an incomplete purge.
+                // The version directory exists without its executable, so it is being deleted, was left behind by an
+                // incomplete purge, or was an obsolete installation that was just deleted.
                 TryDeleteDirectory(versionDirectory);
             }
         }
