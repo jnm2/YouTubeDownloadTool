@@ -60,23 +60,30 @@ public sealed partial class ToolResolver : IDisposable
         return null;
     }
 
+    private void TryDeleteVersionDirectory(string versionDirectory)
+    {
+        try
+        {
+            // Try to delete the executable first because an instance of this app may be locking it in order to
+            // invoke the same version multiple times. A version directory is not used without its executable,
+            // so it does not matter if the rest of the directory is only partially deleted.
+            File.Delete(Path.Join(versionDirectory, executableFileName));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        TryDeleteDirectory(versionDirectory);
+    }
+
     public void PurgeOldVersions()
     {
         var versionDirectories = TryGetVersionDirectories();
 
         foreach (var (_, _, directory) in versionDirectories.OrderBy(d => d.Version).SkipLast(1))
         {
-            try
-            {
-                // Try to delete the executable first because an instance of this app may be locking it in order to
-                // invoke the same version multiple times. A version directory is not used without its executable,
-                // so it does not matter if the rest of the directory is only partially deleted.
-                File.Delete(Path.Join(directory, executableFileName));
-                Directory.Delete(directory, recursive: true);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-            }
+            TryDeleteVersionDirectory(directory);
         }
 
         // Left behind if the app exits while installing. Recent ones may belong to an installation in progress.
