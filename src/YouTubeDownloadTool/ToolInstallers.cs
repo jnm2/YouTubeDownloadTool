@@ -10,17 +10,10 @@ public delegate Task ToolInstaller(Stream download, string targetDirectory, Canc
 
 public static class ToolInstallers
 {
-    public static ToolInstaller SaveAs(string fileName)
+    public static ToolInstaller Unzip()
     {
-        if (string.IsNullOrWhiteSpace(fileName))
-            throw new ArgumentException("File name must be specified.", nameof(fileName));
-
-        return async (download, targetDirectory, cancellationToken) =>
-        {
-            var file = new FileStream(Path.Join(targetDirectory, fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            await using (file.ConfigureAwait(false))
-                await download.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
-        };
+        return (download, targetDirectory, cancellationToken) =>
+            ZipFile.ExtractToDirectoryAsync(download, targetDirectory, cancellationToken);
     }
 
     public static ToolInstaller UnzipSingleFile(string zippedPath, string fileName)

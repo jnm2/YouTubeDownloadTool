@@ -17,9 +17,11 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
             DownloadResolvers.GitHubReleaseAsset(
                 owner: "yt-dlp",
                 repo: "yt-dlp",
-                assetName: "yt-dlp.exe",
+                // Unlike yt-dlp.exe, which is a self-extracting archive of this same content, this does not need to
+                // unpack itself to a temporary directory each time it starts.
+                assetName: "yt-dlp_win.zip",
                 userAgent,
-                ToolInstallers.SaveAs("yt-dlp.exe")));
+                ToolInstallers.Unzip()));
 
         ffmpegResolver = new ToolResolver(
             cacheDirectory: Path.Join(toolCachePath, "ffmpeg"),

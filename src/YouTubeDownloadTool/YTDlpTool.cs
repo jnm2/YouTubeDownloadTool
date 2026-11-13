@@ -133,8 +133,9 @@ public sealed class YTDlpTool
             // Prevent from starting any future child processes
             process.Kill();
 
-            // Unlike youtube-dl, yt-dlp starts a child process with the same name (yt-dlp). Once it's done this,
-            // killing the process we started doesn't cancel anything.
+            // yt-dlp's self-extracting build (still used by caches from older versions of this app) starts a child
+            // process with the same name (yt-dlp). Once it's done this, killing the process we started doesn't cancel
+            // anything.
             Utils.TryKillImmediateChildrenWithProcessName(parentProcess: process, childProcessName: processName);
         }
 
