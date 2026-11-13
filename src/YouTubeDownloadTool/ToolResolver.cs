@@ -112,7 +112,7 @@ public sealed partial class ToolResolver : IDisposable
         if (currentSource is not null && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
             return currentSource;
 
-        var fileLock = await Utils.GetOrDownloadFileAsync(
+        var fileLock = await GetOrDownloadFileAsync(
             Path.Join(cacheDirectory, "v" + download.Version, executableFileName),
             download.DownloadAsync,
             CancellationToken.None);
@@ -120,5 +120,42 @@ public sealed partial class ToolResolver : IDisposable
         var newSource = new LeaseSource(download.Version, fileLock);
         ReplaceCurrentSource(newSource);
         return newSource;
+    }
+
+    private static async Task<RefCountedFileLock> GetOrDownloadFileAsync(string filePath, Func<CancellationToken, Task<Stream>> downloadAsync, CancellationToken cancellationToken)
+    {
+        if (filePath is null || !Path.IsPathFullyQualified(filePath))
+            throw new ArgumentException("The file path must be fully qualified.", nameof(filePath));
+
+        if (downloadAsync is null) throw new ArgumentNullException(nameof(downloadAsync));
+
+        var fileLock = RefCountedFileLock.CreateIfExists(filePath);
+
+        if (fileLock is null)
+        {
+            var stream = await downloadAsync.Invoke(cancellationToken).ConfigureAwait(false);
+            await using var _ = stream.ConfigureAwait(false);
+
+            using var tempFile = new TempFile();
+
+            await using (var file = tempFile.OpenStream())
+                await stream.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
+
+            do
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+                try
+                {
+                    File.Move(tempFile.Path, filePath);
+                }
+                catch (IOException ex) when (ex.GetErrorCode() == WinErrorCode.AlreadyExists)
+                {
+                }
+
+                fileLock = RefCountedFileLock.CreateIfExists(filePath);
+            } while (fileLock is null);
+        }
+
+        return fileLock;
     }
 }
