@@ -1,7 +1,5 @@
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
 
 namespace YouTubeDownloadTool;
 
@@ -34,58 +32,33 @@ public static class DownloadResolvers
             using var client = OwnershipTracker.Create(
                 new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.All })
                 {
-                    BaseAddress = new Uri("https://api.github.com"),
+                    BaseAddress = new Uri("https://github.com"),
                     DefaultRequestHeaders = { { "User-Agent", userAgent } }
                 });
 
-            var (version, downloadUrl) = await GetLatestGitHubReleaseAssetAsync(client.OwnedInstance, owner, repo, assetName, cancellationToken);
+            var version = await GetLatestGitHubReleaseTagAsync(client.OwnedInstance, owner, repo, cancellationToken).ConfigureAwait(false);
 
-            if (downloadUrl is null)
-                throw new NotImplementedException($"Unable to find {assetName} in latest GitHub release.");
+            var downloadUrl = $"https://github.com/{owner}/{repo}/releases/download/{Uri.EscapeDataString(version)}/{Uri.EscapeDataString(assetName)}";
 
             return new AvailableToolDownload(version, client.ReleaseOwnership(), downloadUrl, installer);
         };
     }
 
-    private static async Task<(string version, string? downloadUrl)> GetLatestGitHubReleaseAssetAsync(HttpClient client, string owner, string repo, string? assetName, CancellationToken cancellationToken)
+    private static async Task<string> GetLatestGitHubReleaseTagAsync(HttpClient client, string owner, string repo, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage
-        {
-            RequestUri = new Uri($"/repos/{owner}/{repo}/releases/latest", UriKind.Relative),
-            Headers =
-            {
-                Accept = { new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json") }
-            }
-        };
+        // The GitHub API only allows 60 unauthenticated requests per hour from each IP address, which is easy to exceed
+        // because each launch of the app checks every tool for updates. This web page is not subject to that limit,
+        // and it redirects to the page for the latest release's tag.
+        using var request = new HttpRequestMessage(HttpMethod.Head, $"/{owner}/{repo}/releases/latest");
 
-        using var response = await client.SendAsync(
-            request,
-            HttpCompletionOption.ResponseHeadersRead,
-            cancellationToken).ConfigureAwait(false);
+        using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
 
-        var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        if (response.RequestMessage?.RequestUri?.Segments is [.., "tag/", var escapedTag])
+            return Uri.UnescapeDataString(escapedTag);
 
-        await using (stream.ConfigureAwait(false))
-        {
-            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            var version = document.RootElement.GetProperty("tag_name").GetString()!;
-
-            if (assetName is not null)
-            {
-                foreach (var asset in document.RootElement.GetProperty("assets").EnumerateArray())
-                {
-                    if (assetName.Equals(asset.GetProperty("name").GetString(), StringComparison.OrdinalIgnoreCase))
-                    {
-                        var downloadUrl = asset.GetProperty("browser_download_url").GetString()!;
-                        return (version, downloadUrl);
-                    }
-                }
-            }
-
-            return (version, null);
-        }
+        throw new InvalidOperationException(
+            $"Unable to find the latest release of {owner}/{repo}. It redirected to {response.RequestMessage?.RequestUri}.");
     }
 }
