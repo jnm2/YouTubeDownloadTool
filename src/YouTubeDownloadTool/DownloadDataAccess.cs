@@ -8,6 +8,7 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
 {
     private readonly ToolResolver ytDlpResolver;
     private readonly ToolResolver ffmpegResolver;
+    private readonly ToolResolver denoResolver;
 
     public DownloadDataAccess(string toolCachePath, string userAgent)
     {
@@ -42,22 +43,36 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
                     downloadUrl: "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
                     ToolInstallers.UnzipSingleFile($"ffmpeg-{version}-essentials_build/bin/ffmpeg.exe", "ffmpeg.exe"));
             });
+
+        // yt-dlp needs a JavaScript runtime for full YouTube support, and Deno is the one it uses by default.
+        denoResolver = new ToolResolver(
+            cacheDirectory: Path.Join(toolCachePath, "deno"),
+            executableFileName: "deno.exe",
+            DownloadResolvers.GitHubReleaseAsset(
+                owner: "denoland",
+                repo: "deno",
+                assetName: "deno-x86_64-pc-windows-msvc.zip",
+                userAgent,
+                ToolInstallers.Unzip()));
     }
 
     public void Dispose()
     {
         ytDlpResolver.Dispose();
         ffmpegResolver.Dispose();
+        denoResolver.Dispose();
     }
 
     public async Task CheckForToolUpdatesAsync(CancellationToken cancellationToken)
     {
         ytDlpResolver.PurgeOldVersions();
         ffmpegResolver.PurgeOldVersions();
+        denoResolver.PurgeOldVersions();
 
         await Task.WhenAll(
             ytDlpResolver.CheckForUpdatesAsync(cancellationToken),
-            ffmpegResolver.CheckForUpdatesAsync(cancellationToken)).ConfigureAwait(false);
+            ffmpegResolver.CheckForUpdatesAsync(cancellationToken),
+            denoResolver.CheckForUpdatesAsync(cancellationToken)).ConfigureAwait(false);
     }
 
     public async Task<DownloadResult> DownloadAsync(
@@ -70,22 +85,26 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
     {
         var ffmpegResolution = ffmpegResolver.LeaseToolAsync(cancellationToken);
         var ytDlpResolution = ytDlpResolver.LeaseToolAsync(cancellationToken);
+        var denoResolution = denoResolver.LeaseToolAsync(cancellationToken);
 
         var downloadingTools = new List<string>();
         if (!ffmpegResolution.IsCompleted) downloadingTools.Add("ffmpeg");
         if (!ytDlpResolution.IsCompleted) downloadingTools.Add("yt-dlp");
+        if (!denoResolution.IsCompleted) downloadingTools.Add("Deno");
 
         if (downloadingTools.Count > 0)
             status?.Report($"Downloading {FormatList(downloadingTools)}...");
 
         using var ffmpegLease = await ffmpegResolution;
         using var ytDlpLease = await ytDlpResolution;
+        using var denoLease = await denoResolution;
 
         status?.Report(null);
 
         var ytDlp = new YTDlpTool(
             ytDlpLease.FilePath,
-            ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!);
+            ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!,
+            denoPath: denoLease.FilePath);
 
         return await ytDlp.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, cancellationToken, progress, status).ConfigureAwait(false);
     }

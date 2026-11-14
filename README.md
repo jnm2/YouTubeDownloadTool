@@ -28,5 +28,6 @@ Video sites change constantly, so the app keeps its download tools fresh on its 
 
 - [**yt-dlp**](https://github.com/yt-dlp/yt-dlp), which does the downloading, from its [GitHub releases](https://github.com/yt-dlp/yt-dlp/releases)
 - [**FFmpeg**](https://ffmpeg.org), which merges and converts audio and video, from [gyan.dev's Windows builds](https://www.gyan.dev/ffmpeg/builds/)
+- [**Deno**](https://deno.com), which yt-dlp uses to run the JavaScript needed for full YouTube support, from its [GitHub releases](https://github.com/denoland/deno/releases)
 
 Updates happen in the background and old versions are cleaned up automatically. There's nothing to configure and no need to update the app itself to pick up fixes for a site.
