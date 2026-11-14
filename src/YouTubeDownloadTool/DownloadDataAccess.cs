@@ -71,16 +71,12 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
         var ffmpegResolution = ffmpegResolver.LeaseToolAsync(cancellationToken);
         var ytDlpResolution = ytDlpResolver.LeaseToolAsync(cancellationToken);
 
-        var downloadingTools = (ffmpegResolution.IsCompleted, ytDlpResolution.IsCompleted) switch
-        {
-            (false, false) => "ffmpeg and yt-dlp",
-            (false, _) => "ffmpeg",
-            (_, false) => "yt-dlp",
-            _ => null,
-        };
+        var downloadingTools = new List<string>();
+        if (!ffmpegResolution.IsCompleted) downloadingTools.Add("ffmpeg");
+        if (!ytDlpResolution.IsCompleted) downloadingTools.Add("yt-dlp");
 
-        if (downloadingTools is not null)
-            status?.Report($"Downloading {downloadingTools}...");
+        if (downloadingTools.Count > 0)
+            status?.Report($"Downloading {FormatList(downloadingTools)}...");
 
         using var ffmpegLease = await ffmpegResolution;
         using var ytDlpLease = await ytDlpResolution;
@@ -92,5 +88,15 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
             ffmpegDirectory: Path.GetDirectoryName(ffmpegLease.FilePath)!);
 
         return await ytDlp.DownloadToDirectoryAsync(url, destinationDirectory, audioOnly, cancellationToken, progress, status).ConfigureAwait(false);
+    }
+
+    private static string FormatList(IReadOnlyList<string> items)
+    {
+        return items.Count switch
+        {
+            1 => items[0],
+            2 => $"{items[0]} and {items[1]}",
+            _ => $"{string.Join(", ", items.SkipLast(1))}, and {items[^1]}",
+        };
     }
 }
