@@ -4,20 +4,37 @@ namespace YouTubeDownloadTool;
 
 public sealed partial class ToolResolver : IDisposable
 {
+    // Must not start with "v" so that it can never be mistaken for a version directory.
+    private const string StagingDirectoryPrefix = "staging_";
+    private static readonly TimeSpan StaleStagingDirectoryAge = TimeSpan.FromDays(1);
+    private const int MaxInstallAttempts = 10;
+
     private readonly string cacheDirectory;
-    private readonly string fileName;
+    private readonly string executableFileName;
+    private readonly Func<string, bool>? isObsoleteInstallation;
     private readonly Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync;
     private readonly TaskDeduplicator<LeaseSource> resolveDeduplicator;
     private LeaseSource? currentSource;
 
+    /// <param name="cacheDirectory">The directory in which a subdirectory is kept for each downloaded version.</param>
+    /// <param name="executableFileName">
+    /// The file within each version directory to lease. While leased, it is held open, which prevents the version
+    /// directory from being purged.
+    /// </param>
+    /// <param name="getLatestDownloadAsync">Gets the latest available version of the tool.</param>
+    /// <param name="isObsoleteInstallation">
+    /// Identifies version directories installed in an older format. These are replaced if they are not in use.
+    /// </param>
     public ToolResolver(
         string cacheDirectory,
-        string fileName,
-        Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync)
+        string executableFileName,
+        Func<CancellationToken, Task<AvailableToolDownload>> getLatestDownloadAsync,
+        Func<string, bool>? isObsoleteInstallation = null)
     {
         this.cacheDirectory = cacheDirectory;
-        this.fileName = fileName;
+        this.executableFileName = executableFileName;
         this.getLatestDownloadAsync = getLatestDownloadAsync;
+        this.isObsoleteInstallation = isObsoleteInstallation;
         currentSource = GetCurrentCachedTool();
 
         resolveDeduplicator = new TaskDeduplicator<LeaseSource>(ResolveLatestToolAsync);
@@ -40,7 +57,7 @@ public sealed partial class ToolResolver : IDisposable
         foreach (var info in TryGetVersionDirectories().OrderByDescending(d => d.Version))
         {
             if (info is (_, var rawVersion, { } directory)
-                && RefCountedFileLock.CreateIfExists(Path.Join(directory, fileName)) is { } fileLock)
+                && TryLockInstallation(directory) is { } fileLock)
             {
                 return new LeaseSource(rawVersion, fileLock);
             }
@@ -49,22 +66,50 @@ public sealed partial class ToolResolver : IDisposable
         return null;
     }
 
+    private RefCountedFileLock? TryLockInstallation(string versionDirectory)
+    {
+        if (isObsoleteInstallation?.Invoke(versionDirectory) == true && TryDeleteVersionDirectory(versionDirectory))
+            return null;
+
+        // An obsolete installation that can't be deleted is in use by another instance of this app, so it still works.
+        return RefCountedFileLock.CreateIfExists(Path.Join(versionDirectory, executableFileName));
+    }
+
+    /// <summary>
+    /// Returns <see langword="true"/> if the version directory no longer contains the executable.
+    /// </summary>
+    private bool TryDeleteVersionDirectory(string versionDirectory)
+    {
+        try
+        {
+            // Try to delete the executable first because an instance of this app may be locking it in order to
+            // invoke the same version multiple times. A version directory is not used without its executable,
+            // so it does not matter if the rest of the directory is only partially deleted.
+            File.Delete(Path.Join(versionDirectory, executableFileName));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+
+        TryDeleteDirectory(versionDirectory);
+        return true;
+    }
+
     public void PurgeOldVersions()
     {
         var versionDirectories = TryGetVersionDirectories();
 
         foreach (var (_, _, directory) in versionDirectories.OrderBy(d => d.Version).SkipLast(1))
         {
-            try
-            {
-                // Try to delete the file first because an instance of this app may be locking it in order to invoke
-                // the same version multiple times.
-                File.Delete(Path.Join(directory, fileName));
-                Directory.Delete(directory, recursive: true);
-            }
-            catch (IOException)
-            {
-            }
+            TryDeleteVersionDirectory(directory);
+        }
+
+        // Left behind if the app exits while installing. Recent ones may belong to an installation in progress.
+        foreach (var directory in TryGetDirectories(StagingDirectoryPrefix + "*"))
+        {
+            if (DateTime.UtcNow - Directory.GetCreationTimeUtc(directory) > StaleStagingDirectoryAge)
+                TryDeleteDirectory(directory);
         }
     }
 
@@ -78,19 +123,21 @@ public sealed partial class ToolResolver : IDisposable
         await resolveDeduplicator.StartOrJoin().WithCancellation(cancellationToken);
     }
 
-    private IEnumerable<(Version Version, string RawVersion, string Directory)> TryGetVersionDirectories()
+    private string[] TryGetDirectories(string searchPattern)
     {
-        string[] directories;
         try
         {
-            directories = Directory.GetDirectories(cacheDirectory, "v*");
+            return Directory.GetDirectories(cacheDirectory, searchPattern);
         }
         catch (DirectoryNotFoundException)
         {
-            return Enumerable.Empty<(Version, string, string)>();
+            return [];
         }
+    }
 
-        return directories.SelectWhere(directory =>
+    private IEnumerable<(Version Version, string RawVersion, string Directory)> TryGetVersionDirectories()
+    {
+        return TryGetDirectories("v*").SelectWhere(directory =>
         {
             var rawVersion = Path.GetFileName(directory)[1..];
             return (
@@ -106,13 +153,78 @@ public sealed partial class ToolResolver : IDisposable
         if (currentSource is not null && string.Equals(download.Version, currentSource.Version, StringComparison.OrdinalIgnoreCase))
             return currentSource;
 
-        var fileLock = await Utils.GetOrDownloadFileAsync(
-            Path.Join(cacheDirectory, "v" + download.Version, fileName),
-            download.DownloadAsync,
+        var fileLock = await GetOrInstallVersionAsync(
+            Path.Join(cacheDirectory, "v" + download.Version),
+            download.InstallAsync,
             CancellationToken.None);
 
         var newSource = new LeaseSource(download.Version, fileLock);
         ReplaceCurrentSource(newSource);
         return newSource;
+    }
+
+    private async Task<RefCountedFileLock> GetOrInstallVersionAsync(
+        string versionDirectory,
+        Func<string, CancellationToken, Task> installAsync,
+        CancellationToken cancellationToken)
+    {
+        if (TryLockInstallation(versionDirectory) is { } existingLock)
+            return existingLock;
+
+        // Installing into a staging directory and then moving it into place means that a version directory never has
+        // partial contents. Staging inside the cache directory keeps the move on the same volume.
+        var stagingDirectory = Path.Join(cacheDirectory, StagingDirectoryPrefix + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(stagingDirectory);
+        try
+        {
+            await installAsync.Invoke(stagingDirectory, cancellationToken).ConfigureAwait(false);
+
+            if (!File.Exists(Path.Join(stagingDirectory, executableFileName)))
+                throw new InvalidOperationException($"The downloaded tool does not contain {executableFileName}.");
+
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    Directory.Move(stagingDirectory, versionDirectory);
+                }
+                catch (IOException ex) when (ex.GetErrorCode() == WinErrorCode.AlreadyExists)
+                {
+                    // Another instance of this app may have installed the same version first.
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < MaxInstallAttempts)
+                {
+                    // Moving a directory fails while any file in it is open, for example by an antivirus scan of the
+                    // newly extracted files.
+                    await Task.Delay(TimeSpan.FromMilliseconds(100 * attempt), cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (TryLockInstallation(versionDirectory) is { } fileLock)
+                    return fileLock;
+
+                if (attempt >= MaxInstallAttempts)
+                    throw new IOException($"Unable to install to {versionDirectory}.");
+
+                // The version directory exists without its executable, so it is being deleted, was left behind by an
+                // incomplete purge, or was an obsolete installation that was just deleted.
+                TryDeleteDirectory(versionDirectory);
+            }
+        }
+        finally
+        {
+            TryDeleteDirectory(stagingDirectory);
+        }
+    }
+
+    private static void TryDeleteDirectory(string directory)
+    {
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 }

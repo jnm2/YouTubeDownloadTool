@@ -13,16 +13,22 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
     {
         ytDlpResolver = new ToolResolver(
             cacheDirectory: Path.Join(toolCachePath, "yt-dlp"),
-            fileName: "yt-dlp.exe",
+            executableFileName: "yt-dlp.exe",
             DownloadResolvers.GitHubReleaseAsset(
                 owner: "yt-dlp",
                 repo: "yt-dlp",
-                assetName: "yt-dlp.exe",
-                userAgent));
+                // Unlike yt-dlp.exe, which is a self-extracting archive of this same content, this does not need to
+                // unpack itself to a temporary directory each time it starts.
+                assetName: "yt-dlp_win.zip",
+                userAgent,
+                ToolInstallers.Unzip()),
+            // Self-extracting yt-dlp.exe installations from older versions of this app have no _internal directory.
+            // (Older versions of this app can still use the newer installations.)
+            isObsoleteInstallation: directory => !Directory.Exists(Path.Join(directory, "_internal")));
 
         ffmpegResolver = new ToolResolver(
             cacheDirectory: Path.Join(toolCachePath, "ffmpeg"),
-            fileName: "ffmpeg.exe",
+            executableFileName: "ffmpeg.exe",
             getLatestDownloadAsync: async cancellationToken =>
             {
                 using var client = OwnershipTracker.Create(
@@ -34,7 +40,7 @@ public sealed class DownloadDataAccess : IDownloadDataAccess
                     version,
                     client.ReleaseOwnership(),
                     downloadUrl: "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
-                    StreamTransforms.UnzipSingleFile($"ffmpeg-{version}-essentials_build/bin/ffmpeg.exe"));
+                    ToolInstallers.UnzipSingleFile($"ffmpeg-{version}-essentials_build/bin/ffmpeg.exe", "ffmpeg.exe"));
             });
     }
 

@@ -1,4 +1,3 @@
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -13,7 +12,7 @@ public static class DownloadResolvers
         string repo,
         string assetName,
         string userAgent,
-        Func<string, Func<Stream, Stream>?>? getStreamTransformForVersion = null)
+        ToolInstaller installer)
     {
         if (string.IsNullOrWhiteSpace(owner))
             throw new ArgumentException("Owner must be specified.", nameof(owner));
@@ -26,6 +25,9 @@ public static class DownloadResolvers
 
         if (string.IsNullOrWhiteSpace(userAgent))
             throw new ArgumentException("User agent must be specified.", nameof(userAgent));
+
+        if (installer is null)
+            throw new ArgumentNullException(nameof(installer));
 
         return async cancellationToken =>
         {
@@ -41,9 +43,7 @@ public static class DownloadResolvers
             if (downloadUrl is null)
                 throw new NotImplementedException($"Unable to find {assetName} in latest GitHub release.");
 
-            var streamTransform = getStreamTransformForVersion?.Invoke(version);
-
-            return new AvailableToolDownload(version, client.ReleaseOwnership(), downloadUrl, streamTransform);
+            return new AvailableToolDownload(version, client.ReleaseOwnership(), downloadUrl, installer);
         };
     }
 
