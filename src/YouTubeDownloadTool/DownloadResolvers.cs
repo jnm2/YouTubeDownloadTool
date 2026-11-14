@@ -36,9 +36,13 @@ public static class DownloadResolvers
                     DefaultRequestHeaders = { { "User-Agent", userAgent } }
                 });
 
-            var version = await GetLatestGitHubReleaseTagAsync(client.OwnedInstance, owner, repo, cancellationToken).ConfigureAwait(false);
+            var tag = await GetLatestGitHubReleaseTagAsync(client.OwnedInstance, owner, repo, cancellationToken).ConfigureAwait(false);
 
-            var downloadUrl = $"https://github.com/{owner}/{repo}/releases/download/{Uri.EscapeDataString(version)}/{Uri.EscapeDataString(assetName)}";
+            // Some repositories tag their releases with a "v" prefix, such as "v2.0.0". The prefix is removed so that
+            // the version can be parsed when it is used as the name of a version directory.
+            var version = tag is ['v', >= '0' and <= '9', ..] ? tag[1..] : tag;
+
+            var downloadUrl = $"https://github.com/{owner}/{repo}/releases/download/{Uri.EscapeDataString(tag)}/{Uri.EscapeDataString(assetName)}";
 
             return new AvailableToolDownload(version, client.ReleaseOwnership(), downloadUrl, installer);
         };
