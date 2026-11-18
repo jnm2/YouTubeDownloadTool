@@ -8,7 +8,7 @@ Despite the name, it works with an extremely wide variety of video-hosting sites
 
 Get `YouTubeDownloadTool.exe` from the [latest release](https://github.com/jnm2/YouTubeDownloadTool/releases/latest). No installation is needed.
 
-The app requires the [.NET 10 Desktop Runtime](https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe) or newer, and will prompt you to install it the first time if it's missing.
+The app requires the [.NET 11 Desktop Runtime](https://aka.ms/dotnet/11.0/windowsdesktop-runtime-win-x64.exe) or newer, and will prompt you to install it the first time if it's missing.
 
 ## How to use
 
