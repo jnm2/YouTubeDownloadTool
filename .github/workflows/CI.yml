@@ -18,6 +18,10 @@ jobs:
       with:
         fetch-depth: 0 # Needed in order for tags to be available so prereleases autoincrement the version
 
+    - uses: actions/setup-dotnet@v5
+      with:
+        global-json-file: global.json
+
     - name: Build
       run: ./build.ps1
 
