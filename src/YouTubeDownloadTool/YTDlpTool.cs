@@ -9,8 +9,9 @@ public sealed class YTDlpTool
 {
     private readonly string executablePath;
     private readonly string ffmpegDirectory;
+    private readonly string denoPath;
 
-    public YTDlpTool(string executablePath, string ffmpegDirectory)
+    public YTDlpTool(string executablePath, string ffmpegDirectory, string denoPath)
     {
         if (executablePath is null || !Path.IsPathFullyQualified(executablePath))
             throw new ArgumentException("Executable path must be fully qualified.", nameof(executablePath));
@@ -21,8 +22,12 @@ public sealed class YTDlpTool
         if (!File.Exists(Path.Join(ffmpegDirectory, "ffmpeg.exe")))
             throw new ArgumentException("Ffmpeg.exe does not exist in the specified directory.", nameof(ffmpegDirectory));
 
+        if (denoPath is null || !Path.IsPathFullyQualified(denoPath))
+            throw new ArgumentException("Deno path must be fully qualified.", nameof(denoPath));
+
         this.executablePath = executablePath;
         this.ffmpegDirectory = ffmpegDirectory;
+        this.denoPath = denoPath;
     }
 
     public async Task<DownloadResult> DownloadToDirectoryAsync(
@@ -51,7 +56,7 @@ public sealed class YTDlpTool
                 WorkingDirectory = destinationDirectory,
                 FileName = executablePath,
                 CreateNoWindow = true,
-                ArgumentList = { url, "--ffmpeg-location", ffmpegDirectory },
+                ArgumentList = { url, "--ffmpeg-location", ffmpegDirectory, "--js-runtimes", "deno:" + denoPath },
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             }
