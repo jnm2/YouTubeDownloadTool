@@ -65,72 +65,15 @@ public sealed class YTDlpTool
 
         if (audioOnly) process.StartInfo.ArgumentList.Add("--extract-audio");
 
-        var output = new List<(bool IsError, string Line)>();
+        var output = new List<ProcessOutputLine>();
 
         var downloadNumber = 0;
         var progressRangeStart = 0.0;
         var progressRangeLength = 0.95;
         var alreadyDownloadedMessage = (string?)null;
 
-        process.OutputDataReceived += (sender, e) =>
-        {
-            if (e.Data is null) return;
-
-            if (e.Data.StartsWith("[download] ", StringComparison.OrdinalIgnoreCase))
-            {
-                var downloadInfo = e.Data["[download] ".Length..];
-
-                if (Regex.Match(downloadInfo, @"\s*(?<percent>[\d.]+)%") is { Success: true } match)
-                {
-                    var downloadPercent = double.Parse(match.Groups["percent"].Value, NumberStyles.Number, CultureInfo.CurrentCulture);
-                    progress?.Report(progressRangeStart + (downloadPercent * 0.01 * progressRangeLength));
-                }
-                else
-                {
-                    if (downloadInfo.StartsWith("Destination:", StringComparison.OrdinalIgnoreCase))
-                    {
-                        downloadNumber++;
-                        if (downloadNumber > 1)
-                        {
-                            progressRangeStart += progressRangeLength;
-                            progressRangeLength = (1 - progressRangeStart) / 2;
-                        }
-                    }
-
-                    if (downloadInfo.Contains("has already been downloaded", StringComparison.OrdinalIgnoreCase))
-                    {
-                        alreadyDownloadedMessage = downloadInfo;
-                    }
-                }
-            }
-            else if (e.Data.StartsWith("[ffmpeg] ", StringComparison.OrdinalIgnoreCase))
-            {
-                progress?.Report(null);
-            }
-
-            status?.Report(e.Data);
-            output.Add((IsError: false, e.Data));
-        };
-
-        process.ErrorDataReceived += (sender, e) =>
-        {
-            if (e.Data is null) return;
-
-            if (progressRangeStart == 0
-                && e.Data.StartsWith("WARNING: Requested formats are incompatible for merge", StringComparison.OrdinalIgnoreCase))
-            {
-                // Audio file will be downloaded separately, so reserve an extra 5% for the second file.
-                progressRangeLength = 0.90;
-            }
-
-            status?.Report(e.Data);
-            output.Add((IsError: true, e.Data));
-        };
-
         cancellationToken.ThrowIfCancellationRequested();
         process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
 
         void Cancel()
         {
@@ -146,7 +89,56 @@ public sealed class YTDlpTool
         }
 
         await using (cancellationToken.Register(Cancel))
-            await process.WaitForExitAsync(CancellationToken.None);
+        {
+            await foreach (var line in process.ReadAllLinesAsync(CancellationToken.None).ConfigureAwait(false))
+            {
+                if (line.StandardError)
+                {
+                    if (progressRangeStart == 0
+                        && line.Content.StartsWith("WARNING: Requested formats are incompatible for merge", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Audio file will be downloaded separately, so reserve an extra 5% for the second file.
+                        progressRangeLength = 0.90;
+                    }
+                }
+                else if (line.Content.StartsWith("[download] ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var downloadInfo = line.Content["[download] ".Length..];
+
+                    if (Regex.Match(downloadInfo, @"\s*(?<percent>[\d.]+)%") is { Success: true } match)
+                    {
+                        var downloadPercent = double.Parse(match.Groups["percent"].Value, NumberStyles.Number, CultureInfo.CurrentCulture);
+                        progress?.Report(progressRangeStart + (downloadPercent * 0.01 * progressRangeLength));
+                    }
+                    else
+                    {
+                        if (downloadInfo.StartsWith("Destination:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadNumber++;
+                            if (downloadNumber > 1)
+                            {
+                                progressRangeStart += progressRangeLength;
+                                progressRangeLength = (1 - progressRangeStart) / 2;
+                            }
+                        }
+
+                        if (downloadInfo.Contains("has already been downloaded", StringComparison.OrdinalIgnoreCase))
+                        {
+                            alreadyDownloadedMessage = downloadInfo;
+                        }
+                    }
+                }
+                else if (line.Content.StartsWith("[ffmpeg] ", StringComparison.OrdinalIgnoreCase))
+                {
+                    progress?.Report(null);
+                }
+
+                status?.Report(line.Content);
+                output.Add(line);
+            }
+
+            await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+        }
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -155,8 +147,8 @@ public sealed class YTDlpTool
             var errorMessage = string.Join(
                 Environment.NewLine,
                 from part in output
-                where part.IsError
-                select part.Line);
+                where part.StandardError
+                select part.Content);
 
             return DownloadResult.Error(errorMessage, process.ExitCode);
         }
