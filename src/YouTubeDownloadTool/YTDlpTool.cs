@@ -53,6 +53,7 @@ public sealed class YTDlpTool
             StartInfo =
             {
                 UseShellExecute = false,
+                KillOnParentExit = true,
                 WorkingDirectory = destinationDirectory,
                 FileName = executablePath,
                 CreateNoWindow = true,

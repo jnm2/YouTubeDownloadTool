@@ -20,6 +20,8 @@ The app requires the [.NET 11 Desktop Runtime](https://aka.ms/dotnet/11.0/window
 
 Progress is shown in the window and on the app's taskbar icon. The URL box clears when the download is done, and the destination folder and audio setting will be remembered for next time.
 
+Closing the app stops any download or conversion that is still running.
+
 ![Main window while a download is in progress](assets/readme/downloading.png)
 
 ## Always up to date
